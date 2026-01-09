@@ -41,7 +41,7 @@ jobs:
           - os: macos-latest
             artifact: fake-data-macos-arm64
             extension: ''
-          - os: macos-13
+          - os: macos-15-intel
             artifact: fake-data-macos-x64
             extension: ''
           - os: windows-latest
