@@ -1,0 +1,89 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '9.0.0-beta4'
+    id 'org.graalvm.buildtools.native' version '0.10.6'
+}
+
+group = 'com.fakedata'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // CLI parsing
+    implementation 'info.picocli:picocli:4.7.6'
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
+
+    // Fake data generation
+    implementation 'net.datafaker:datafaker:2.4.0'
+
+    // Apache POI for Office documents (DOCX, XLSX, PPTX)
+    implementation 'org.apache.poi:poi:5.3.0'
+    implementation 'org.apache.poi:poi-ooxml:5.3.0'
+
+    // ODF Toolkit for OpenDocument formats (ODT, ODS, ODP)
+    // Note: simple-odf brings its own compatible odfdom-java version
+    implementation 'org.odftoolkit:simple-odf:0.9.0'
+
+    // OpenPDF for PDF generation
+    implementation 'com.github.librepdf:openpdf:2.0.3'
+
+    // CSV writing
+    implementation 'com.opencsv:opencsv:5.9'
+
+    // Logging - route Log4j2 (used by POI) through SLF4J
+    implementation 'org.slf4j:slf4j-simple:2.0.16'
+    implementation 'org.apache.logging.log4j:log4j-to-slf4j:2.24.3'
+}
+
+application {
+    mainClass = 'com.fakedata.FakeDataApp'
+}
+
+// Configure Picocli annotation processor for GraalVM
+compileJava {
+    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
+}
+
+// Shadow JAR configuration
+shadowJar {
+    archiveBaseName.set('fake-data')
+    archiveClassifier.set('all')
+    archiveVersion.set('')
+    manifest {
+        attributes 'Main-Class': 'com.fakedata.FakeDataApp'
+    }
+    mergeServiceFiles()
+}
+
+// GraalVM Native Image configuration
+graalvmNative {
+    binaries {
+        main {
+            imageName = 'fake-data'
+            mainClass = 'com.fakedata.FakeDataApp'
+            buildArgs.addAll(
+                '--no-fallback',
+                '--enable-url-protocols=http,https',
+                '-H:+ReportExceptionStackTraces',
+                '--initialize-at-build-time=org.slf4j',
+                '-H:ReflectionConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/reflect-config.json',
+                '-H:ResourceConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/resource-config.json'
+            )
+        }
+    }
+    toolchainDetection = false
+}
+
+tasks.named('build') {
+    dependsOn shadowJar
+}

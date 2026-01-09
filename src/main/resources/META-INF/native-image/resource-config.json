@@ -1,0 +1,47 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": ".*\\.properties$"
+      },
+      {
+        "pattern": ".*\\.xml$"
+      },
+      {
+        "pattern": ".*\\.xsd$"
+      },
+      {
+        "pattern": ".*\\.dtd$"
+      },
+      {
+        "pattern": "org/apache/poi/.*"
+      },
+      {
+        "pattern": "org/apache/xmlbeans/.*"
+      },
+      {
+        "pattern": "schemaorg_apache_xmlbeans/.*"
+      },
+      {
+        "pattern": "com/lowagie/text/.*"
+      },
+      {
+        "pattern": "org/odftoolkit/.*"
+      },
+      {
+        "pattern": "META-INF/services/.*"
+      },
+      {
+        "pattern": "META-INF/native-image/.*"
+      }
+    ]
+  },
+  "bundles": [
+    {
+      "name": "com.lowagie.text.error_messages.MessageLocalization"
+    },
+    {
+      "name": "org.apache.poi.hssf.record.formula.functions.FunctionMetadataReader"
+    }
+  ]
+}
