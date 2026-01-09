@@ -22,3 +22,6 @@ all-formats-output
 # Native image build artifacts
 *.o
 *.obj
+
+# Claude Code
+CLAUDE.md

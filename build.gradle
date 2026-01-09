@@ -76,8 +76,8 @@ graalvmNative {
                 '--enable-url-protocols=http,https',
                 '-H:+ReportExceptionStackTraces',
                 '--initialize-at-build-time=org.slf4j',
-                '-H:ReflectionConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/reflect-config.json',
-                '-H:ResourceConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/resource-config.json'
+                "-H:ReflectionConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/reflect-config.json",
+                "-H:ResourceConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/resource-config.json"
             )
         }
     }
