@@ -2,7 +2,6 @@ plugins {
     id 'java'
     id 'application'
     id 'com.gradleup.shadow' version '9.0.0-beta4'
-    id 'org.beryx.jlink' version '3.1.1'
 }
 
 group = 'com.fakedata'
@@ -31,7 +30,6 @@ dependencies {
     implementation 'org.apache.poi:poi-ooxml:5.3.0'
 
     // ODF Toolkit for OpenDocument formats (ODT, ODS, ODP)
-    // Note: simple-odf brings its own compatible odfdom-java version
     implementation 'org.odftoolkit:simple-odf:0.9.0'
 
     // OpenPDF for PDF generation (full-featured with tables)
@@ -47,7 +45,6 @@ dependencies {
 
 application {
     mainClass = 'com.fakedata.FakeDataApp'
-    mainModule = 'com.fakedata'
 }
 
 // Configure Picocli annotation processor
@@ -64,38 +61,6 @@ shadowJar {
         attributes 'Main-Class': 'com.fakedata.FakeDataApp'
     }
     mergeServiceFiles()
-}
-
-// jlink configuration for creating self-contained runtime images
-jlink {
-    options = ['--strip-debug', '--compress', 'zip-6', '--no-header-files', '--no-man-pages']
-
-    launcher {
-        name = 'fake-data'
-    }
-
-    // Include AWT and related modules for PDF/image generation
-    addExtraDependencies('javafx')
-
-    forceMerge('log4j-api', 'slf4j-api')
-
-    jpackage {
-        outputDir = 'jpackage'
-    }
-
-    imageZip = project.file("${buildDir}/distributions/fake-data-${getOsName()}.zip")
-}
-
-def getOsName() {
-    def os = System.getProperty('os.name').toLowerCase()
-    def arch = System.getProperty('os.arch').toLowerCase()
-    if (os.contains('mac')) {
-        return arch.contains('aarch64') || arch.contains('arm') ? 'macos-arm64' : 'macos-x64'
-    } else if (os.contains('win')) {
-        return 'windows'
-    } else {
-        return 'linux'
-    }
 }
 
 tasks.named('build') {
