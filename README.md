@@ -41,6 +41,11 @@ Requirements:
 - GraalVM 21+ with native-image
 
 ```bash
+# Install GraalVM via SDKMAN (if needed)
+sdk install java 21.0.2-graalce
+sdk use java 21.0.2-graalce
+
+# Build native executable
 ./gradlew nativeCompile
 
 # Binary location
