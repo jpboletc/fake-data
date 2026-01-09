@@ -28,8 +28,8 @@ jobs:
           name: fake-data-jar
           path: build/libs/fake-data-all.jar
 
-  build-native:
-    name: Build Native - ${{ matrix.os }}
+  build-jlink:
+    name: Build jlink - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -37,55 +37,52 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact: fake-data-linux
-            extension: ''
           - os: macos-latest
             artifact: fake-data-macos-arm64
-            extension: ''
           - os: macos-15-intel
             artifact: fake-data-macos-x64
-            extension: ''
           - os: windows-latest
             artifact: fake-data-windows
-            extension: '.exe'
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          distribution: 'temurin'
 
-      - name: Build native image (Unix)
+      - name: Build jlink image (Unix)
         if: runner.os != 'Windows'
-        run: ./gradlew nativeCompile
+        run: ./gradlew jlinkZip
 
-      - name: Build native image (Windows)
+      - name: Build jlink image (Windows)
         if: runner.os == 'Windows'
-        run: .\gradlew.bat nativeCompile
+        run: .\gradlew.bat jlinkZip
 
       - name: Rename artifact (Unix)
         if: runner.os != 'Windows'
         run: |
-          cp build/native/nativeCompile/fake-data ${{ matrix.artifact }}
-          chmod +x ${{ matrix.artifact }}
+          mkdir -p artifacts
+          cp build/distributions/fake-data-*.zip artifacts/${{ matrix.artifact }}.zip
 
       - name: Rename artifact (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          copy build\native\nativeCompile\fake-data.exe ${{ matrix.artifact }}${{ matrix.extension }}
+          New-Item -ItemType Directory -Force -Path artifacts
+          Copy-Item build\distributions\fake-data-*.zip artifacts\${{ matrix.artifact }}.zip
 
-      - name: Upload native artifact
+      - name: Upload jlink artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}${{ matrix.extension }}
+          path: artifacts/${{ matrix.artifact }}.zip
 
   release:
     name: Create Release
-    needs: [build-jar, build-native]
+    needs: [build-jar, build-jlink]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -101,10 +98,10 @@ jobs:
         with:
           files: |
             artifacts/fake-data-jar/fake-data-all.jar
-            artifacts/fake-data-linux/fake-data-linux
-            artifacts/fake-data-macos-arm64/fake-data-macos-arm64
-            artifacts/fake-data-macos-x64/fake-data-macos-x64
-            artifacts/fake-data-windows/fake-data-windows.exe
+            artifacts/fake-data-linux/fake-data-linux.zip
+            artifacts/fake-data-macos-arm64/fake-data-macos-arm64.zip
+            artifacts/fake-data-macos-x64/fake-data-macos-x64.zip
+            artifacts/fake-data-windows/fake-data-windows.zip
           generate_release_notes: true
           draft: false
           prerelease: false

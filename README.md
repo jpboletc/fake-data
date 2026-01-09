@@ -9,19 +9,38 @@ A command-line utility that generates realistic dummy attachment files with them
 - **Realistic Content**: Documents contain contextually appropriate data, not just lorem ipsum
 - **CSV Manifest**: Tracks all generated files with unique IDs
 - **Flexible Input**: Submission references via CLI or file (with per-line themes)
-- **Native Executables**: GraalVM native image support for standalone distribution
+- **Self-contained Bundles**: jlink-based distribution with bundled JRE (no Java installation required)
 
 ## Installation
 
-### Option 1: Download Pre-built Binary
+### Option 1: Download Pre-built Bundle
 
-Download the appropriate binary for your platform from the [Releases](../../releases) page:
-- `fake-data-linux` - Linux (x64)
-- `fake-data-macos-arm64` - macOS (Apple Silicon)
-- `fake-data-macos-x64` - macOS (Intel)
-- `fake-data-windows.exe` - Windows
+Download the appropriate bundle for your platform from the [Releases](../../releases) page:
+- `fake-data-linux.zip` - Linux (x64)
+- `fake-data-macos-arm64.zip` - macOS (Apple Silicon)
+- `fake-data-macos-x64.zip` - macOS (Intel)
+- `fake-data-windows.zip` - Windows
 
-### Option 2: Build from Source
+Each bundle includes a minimal JRE, so no Java installation is required.
+
+```bash
+# Extract and run (Unix)
+unzip fake-data-linux.zip
+./fake-data/bin/fake-data --help
+
+# Windows
+# Extract the zip and run fake-data\bin\fake-data.bat
+```
+
+### Option 2: Download Fat JAR
+
+If you already have Java 21+ installed, download `fake-data-all.jar` from the [Releases](../../releases) page:
+
+```bash
+java -jar fake-data-all.jar --help
+```
+
+### Option 3: Build from Source
 
 Requirements:
 - Java 21+
@@ -35,21 +54,19 @@ Requirements:
 java -jar build/libs/fake-data-all.jar --help
 ```
 
-### Option 3: Build Native Executable
+### Option 4: Build Self-contained Bundle (jlink)
 
-Requirements:
-- GraalVM 21+ with native-image
+Build a self-contained bundle with a minimal JRE for your current platform:
 
 ```bash
-# Install GraalVM via SDKMAN (if needed)
-sdk install java 21.0.2-graalce
-sdk use java 21.0.2-graalce
+# Build jlink image
+./gradlew jlinkZip
 
-# Build native executable
-./gradlew nativeCompile
-
-# Binary location
-./build/native/nativeCompile/fake-data
+# Output location (platform-specific)
+# Linux: build/distributions/fake-data-linux.zip
+# macOS ARM: build/distributions/fake-data-macos-arm64.zip
+# macOS Intel: build/distributions/fake-data-macos-x64.zip
+# Windows: build/distributions/fake-data-windows.zip
 ```
 
 ## Usage
@@ -57,8 +74,8 @@ sdk use java 21.0.2-graalce
 ### Basic Usage
 
 ```bash
-# Generate files for submission references
-./fake-data --refs "QY76OVC07S34,BM76OVC07S34" \
+# Generate files for submission references (using jlink bundle)
+./fake-data/bin/fake-data --refs "QY76OVC07S34,BM76OVC07S34" \
   --formats "pdf:2,xlsx:1,pptx:1" \
   --output ./output
 
@@ -94,7 +111,7 @@ Supported formats: `pdf`, `jpeg`, `xlsx`, `xls`, `ods`, `docx`, `odt`, `pptx`, `
 --formats "pdf:1,jpeg:1,xlsx:1,xls:1,ods:1,docx:1,odt:1,pptx:1,odp:1"
 
 # Full example with all formats
-./fake-data --refs "ALLFORMAT123" \
+./fake-data/bin/fake-data --refs "ALLFORMAT123" \
   --formats "pdf:1,jpeg:1,xlsx:1,xls:1,ods:1,docx:1,odt:1,pptx:1,odp:1" \
   --theme "technology" \
   --output ./all-formats-output
@@ -117,7 +134,7 @@ Available themes customize document names, content, and terminology:
 
 ```bash
 # Global theme for all submissions
-./fake-data --refs "REF123456789" --theme "financial" --formats "pdf:1"
+./fake-data/bin/fake-data --refs "REF123456789" --theme "financial" --formats "pdf:1"
 ```
 
 ### File Input with Per-Submission Themes
@@ -133,7 +150,7 @@ GENERIC12345
 ```
 
 ```bash
-./fake-data --file submissions.txt --formats "pdf:2,xlsx:1"
+./fake-data/bin/fake-data --file submissions.txt --formats "pdf:2,xlsx:1"
 ```
 
 Output:
@@ -153,10 +170,10 @@ Override the default 12-character alphanumeric pattern:
 
 ```bash
 # 8-character uppercase only
-./fake-data --refs "ABCD1234" --pattern "^[A-Z0-9]{8}$" --formats "pdf:1"
+./fake-data/bin/fake-data --refs "ABCD1234" --pattern "^[A-Z0-9]{8}$" --formats "pdf:1"
 
 # Any length alphanumeric with dashes
-./fake-data --refs "REF-2024-001" --pattern "^[A-Za-z0-9-]+$" --formats "pdf:1"
+./fake-data/bin/fake-data --refs "REF-2024-001" --pattern "^[A-Za-z0-9-]+$" --formats "pdf:1"
 ```
 
 ## Output
@@ -196,21 +213,21 @@ w41ohrzh96f7r86b,0mfs7vg26m4wq4fu,QY76OVC07S34_3_Financial_Procedures.docx
 ## Technology Stack
 
 - **Language**: Java 21
-- **Build**: Gradle 8.10 with Shadow plugin
+- **Build**: Gradle 8.10 with Shadow and jlink plugins
 - **CLI**: Picocli
 - **Fake Data**: Datafaker
-- **PDF**: OpenPDF
+- **PDF**: OpenPDF (with full table and color support)
 - **Office (DOCX/XLSX/PPTX)**: Apache POI
 - **OpenDocument (ODT/ODS/ODP)**: ODF Toolkit (Simple ODF)
-- **Images**: Java2D
+- **Images**: Java2D (bar charts, pie charts, line graphs)
 - **CSV**: OpenCSV
-- **Native Build**: GraalVM Native Image
+- **Distribution**: jlink for self-contained bundles with minimal JRE
 
 ## Building for Distribution
 
 ### GitHub Actions
 
-The project includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically builds native executables for all platforms when you create a release tag:
+The project includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically builds jlink bundles for all platforms when you create a release tag:
 
 ```bash
 git tag v1.0.0
@@ -218,11 +235,11 @@ git push origin v1.0.0
 ```
 
 This creates releases with:
-- `fake-data-all.jar` - Universal JAR (requires Java)
-- `fake-data-linux` - Linux x64 native executable
-- `fake-data-macos-arm64` - macOS Apple Silicon native executable
-- `fake-data-macos-x64` - macOS Intel native executable
-- `fake-data-windows.exe` - Windows native executable
+- `fake-data-all.jar` - Universal fat JAR (requires Java 21+)
+- `fake-data-linux.zip` - Linux x64 jlink bundle (includes JRE)
+- `fake-data-macos-arm64.zip` - macOS Apple Silicon jlink bundle (includes JRE)
+- `fake-data-macos-x64.zip` - macOS Intel jlink bundle (includes JRE)
+- `fake-data-windows.zip` - Windows jlink bundle (includes JRE)
 
 ## License
 

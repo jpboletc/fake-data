@@ -1,10 +1,10 @@
 package com.fakedata.generator;
 
 import com.fakedata.content.ContentProvider;
-import org.apache.poi.sl.usermodel.PictureData;
 import org.apache.poi.xslf.usermodel.*;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Rectangle;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;

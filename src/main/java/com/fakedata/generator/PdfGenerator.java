@@ -2,8 +2,11 @@ package com.fakedata.generator;
 
 import com.fakedata.content.ContentProvider;
 import com.lowagie.text.*;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 
+import java.awt.Color;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -13,6 +16,10 @@ import java.util.List;
  * Generates PDF files with realistic business report content.
  */
 public class PdfGenerator implements FileGenerator {
+
+    private static final Color HEADER_BG = new Color(66, 133, 244);
+    private static final Color HEADER_TEXT = Color.WHITE;
+    private static final Color ALT_ROW_BG = new Color(245, 245, 245);
 
     @Override
     public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
@@ -25,7 +32,7 @@ public class PdfGenerator implements FileGenerator {
             document.open();
 
             // Add title
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 24);
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 24, new Color(51, 51, 51));
             Paragraph title = new Paragraph(contentProvider.getReportTitle(), titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(20);
@@ -45,7 +52,7 @@ public class PdfGenerator implements FileGenerator {
             document.add(companyInfo);
 
             // Executive Summary section
-            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
+            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, new Color(66, 133, 244));
             Paragraph summaryHeader = new Paragraph("Executive Summary", sectionFont);
             summaryHeader.setSpacingBefore(15);
             summaryHeader.setSpacingAfter(10);
@@ -81,40 +88,74 @@ public class PdfGenerator implements FileGenerator {
                 document.add(para);
             }
 
-            // Financial Overview section
+            // Financial Overview section with table
             Paragraph financialHeader = new Paragraph("Financial Overview", sectionFont);
             financialHeader.setSpacingBefore(20);
             financialHeader.setSpacingAfter(10);
             document.add(financialHeader);
 
-            // Create a simple table
-            Table table = new Table(4);
-            table.setWidth(100);
-            table.setPadding(5);
+            // Create a styled table
+            PdfPTable table = new PdfPTable(4);
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(10);
+            table.setSpacingAfter(15);
 
-            Font tableHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
+            // Set column widths
+            float[] columnWidths = {2f, 1.5f, 1.5f, 1f};
+            table.setWidths(columnWidths);
+
+            Font tableHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, HEADER_TEXT);
             Font tableCellFont = FontFactory.getFont(FontFactory.HELVETICA, 10);
 
+            // Header row
             String[] headers = {"Metric", "Current", "Previous", "Change"};
             for (String header : headers) {
-                Cell cell = new Cell(new Phrase(header, tableHeaderFont));
-                cell.setBackgroundColor(java.awt.Color.LIGHT_GRAY);
+                PdfPCell cell = new PdfPCell(new Phrase(header, tableHeaderFont));
+                cell.setBackgroundColor(HEADER_BG);
+                cell.setPadding(8);
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 table.addCell(cell);
             }
 
-            String[] metrics = {"Revenue", "Expenses", "Profit", "Growth Rate"};
+            // Data rows
+            String[] metrics = {"Revenue", "Expenses", "Profit", "Growth Rate", "Market Share", "Customer Retention"};
+            boolean altRow = false;
             for (String metric : metrics) {
-                table.addCell(new Phrase(metric, tableCellFont));
-                table.addCell(new Phrase(String.format("$%.2fM", contentProvider.getAmount(1, 10)), tableCellFont));
-                table.addCell(new Phrase(String.format("$%.2fM", contentProvider.getAmount(1, 10)), tableCellFont));
+                Color rowBg = altRow ? ALT_ROW_BG : Color.WHITE;
+
+                PdfPCell metricCell = new PdfPCell(new Phrase(metric, tableCellFont));
+                metricCell.setBackgroundColor(rowBg);
+                metricCell.setPadding(6);
+                table.addCell(metricCell);
+
+                PdfPCell currentCell = new PdfPCell(new Phrase(String.format("$%.2fM", contentProvider.getAmount(1, 10)), tableCellFont));
+                currentCell.setBackgroundColor(rowBg);
+                currentCell.setPadding(6);
+                currentCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                table.addCell(currentCell);
+
+                PdfPCell prevCell = new PdfPCell(new Phrase(String.format("$%.2fM", contentProvider.getAmount(1, 10)), tableCellFont));
+                prevCell.setBackgroundColor(rowBg);
+                prevCell.setPadding(6);
+                prevCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                table.addCell(prevCell);
+
                 double change = contentProvider.getAmount(-15, 25);
-                table.addCell(new Phrase(String.format("%+.1f%%", change), tableCellFont));
+                Color changeColor = change >= 0 ? new Color(15, 157, 88) : new Color(219, 68, 55);
+                Font changeFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, changeColor);
+                PdfPCell changeCell = new PdfPCell(new Phrase(String.format("%+.1f%%", change), changeFont));
+                changeCell.setBackgroundColor(rowBg);
+                changeCell.setPadding(6);
+                changeCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                table.addCell(changeCell);
+
+                altRow = !altRow;
             }
             document.add(table);
 
             // Recommendations section
             Paragraph recsHeader = new Paragraph("Recommendations", sectionFont);
-            recsHeader.setSpacingBefore(20);
+            recsHeader.setSpacingBefore(10);
             recsHeader.setSpacingAfter(10);
             document.add(recsHeader);
 
@@ -127,7 +168,7 @@ public class PdfGenerator implements FileGenerator {
 
             // Footer
             Paragraph footer = new Paragraph("\n\nConfidential - " + contentProvider.getCompanyName(),
-                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10));
+                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10, new Color(153, 153, 153)));
             footer.setAlignment(Element.ALIGN_CENTER);
             document.add(footer);
 

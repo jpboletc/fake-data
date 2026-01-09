@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'com.gradleup.shadow' version '9.0.0-beta4'
-    id 'org.graalvm.buildtools.native' version '0.10.6'
+    id 'org.beryx.jlink' version '3.1.1'
 }
 
 group = 'com.fakedata'
@@ -34,7 +34,7 @@ dependencies {
     // Note: simple-odf brings its own compatible odfdom-java version
     implementation 'org.odftoolkit:simple-odf:0.9.0'
 
-    // OpenPDF for PDF generation
+    // OpenPDF for PDF generation (full-featured with tables)
     implementation 'com.github.librepdf:openpdf:2.0.3'
 
     // CSV writing
@@ -47,9 +47,10 @@ dependencies {
 
 application {
     mainClass = 'com.fakedata.FakeDataApp'
+    mainModule = 'com.fakedata'
 }
 
-// Configure Picocli annotation processor for GraalVM
+// Configure Picocli annotation processor
 compileJava {
     options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
 }
@@ -65,23 +66,36 @@ shadowJar {
     mergeServiceFiles()
 }
 
-// GraalVM Native Image configuration
-graalvmNative {
-    binaries {
-        main {
-            imageName = 'fake-data'
-            mainClass = 'com.fakedata.FakeDataApp'
-            buildArgs.addAll(
-                '--no-fallback',
-                '--enable-url-protocols=http,https',
-                '-H:+ReportExceptionStackTraces',
-                '--initialize-at-build-time=org.slf4j',
-                "-H:ReflectionConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/reflect-config.json",
-                "-H:ResourceConfigurationFiles=${projectDir}/src/main/resources/META-INF/native-image/resource-config.json"
-            )
-        }
+// jlink configuration for creating self-contained runtime images
+jlink {
+    options = ['--strip-debug', '--compress', 'zip-6', '--no-header-files', '--no-man-pages']
+
+    launcher {
+        name = 'fake-data'
     }
-    toolchainDetection = false
+
+    // Include AWT and related modules for PDF/image generation
+    addExtraDependencies('javafx')
+
+    forceMerge('log4j-api', 'slf4j-api')
+
+    jpackage {
+        outputDir = 'jpackage'
+    }
+
+    imageZip = project.file("${buildDir}/distributions/fake-data-${getOsName()}.zip")
+}
+
+def getOsName() {
+    def os = System.getProperty('os.name').toLowerCase()
+    def arch = System.getProperty('os.arch').toLowerCase()
+    if (os.contains('mac')) {
+        return arch.contains('aarch64') || arch.contains('arm') ? 'macos-arm64' : 'macos-x64'
+    } else if (os.contains('win')) {
+        return 'windows'
+    } else {
+        return 'linux'
+    }
 }
 
 tasks.named('build') {
