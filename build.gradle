@@ -26,8 +26,9 @@ dependencies {
     implementation 'net.datafaker:datafaker:2.4.0'
 
     // Apache POI for Office documents (DOCX, XLSX, PPTX)
-    implementation 'org.apache.poi:poi:5.3.0'
-    implementation 'org.apache.poi:poi-ooxml:5.3.0'
+    // Upgraded from 5.3.0 to fix CVE-2025-31672
+    implementation 'org.apache.poi:poi:5.4.0'
+    implementation 'org.apache.poi:poi-ooxml:5.4.0'
 
     // ODF Toolkit for OpenDocument formats (ODT, ODS, ODP)
     implementation 'org.odftoolkit:simple-odf:0.9.0'
