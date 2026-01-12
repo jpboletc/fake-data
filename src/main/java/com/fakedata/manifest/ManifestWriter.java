@@ -35,7 +35,8 @@ public class ManifestWriter {
      */
     public void addEntry(String submissionRef, int fileNumber, String filename) {
         String mailItemId = IdGenerator.generate16();
-        String attachedId = IdGenerator.generate16();
+        // String attachedId = IdGenerator.generate16();
+        String attachedId = mailItemId;
         String fullFilename = submissionRef + "_" + fileNumber + "_" + filename;
 
         entries.add(new ManifestEntry(mailItemId, attachedId, fullFilename));
@@ -71,17 +72,24 @@ public class ManifestWriter {
     public void write(Path outputDir) throws IOException {
         Path manifestPath = outputDir.resolve("manifest.csv");
 
-        try (CSVWriter writer = new CSVWriter(new FileWriter(manifestPath.toFile()))) {
-            // Write header
-            writer.writeNext(new String[]{"mail_item_id", "attached_id", "filename"});
+        try (FileWriter fw = new FileWriter(manifestPath.toFile())) {
+            // Write blank line at start
+            fw.write(System.lineSeparator());
 
-            // Write entries
-            for (ManifestEntry entry : entries) {
-                writer.writeNext(new String[]{
-                        entry.mailItemId(),
-                        entry.attachedId(),
-                        entry.filename()
-                });
+            try (CSVWriter writer = new CSVWriter(fw,
+                    CSVWriter.DEFAULT_SEPARATOR,
+                    CSVWriter.NO_QUOTE_CHARACTER,
+                    CSVWriter.DEFAULT_ESCAPE_CHARACTER,
+                    CSVWriter.DEFAULT_LINE_END)) {
+
+                // Write entries (no header, no quotes)
+                for (ManifestEntry entry : entries) {
+                    writer.writeNext(new String[]{
+                            entry.mailItemId(),
+                            entry.attachedId(),
+                            entry.filename()
+                    });
+                }
             }
         }
     }
