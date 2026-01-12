@@ -14,6 +14,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Callable;
 
@@ -51,6 +53,10 @@ public class FakeDataApp implements Callable<Integer> {
     @Option(names = {"-t", "--theme"},
             description = "Global theme for content generation (financial, entertainment, healthcare, technology, legal, education, retail)")
     private String globalTheme;
+
+    @Option(names = {"-m", "--manifest"},
+            description = "Manifest filename (e.g., 'manifest12012611.csv' for DDMMYYHH format)")
+    private String manifestFilename;
 
     // Registry of available generators
     private static final Map<String, FileGenerator> GENERATORS = new LinkedHashMap<>();
@@ -155,10 +161,15 @@ public class FakeDataApp implements Callable<Integer> {
             }
         }
 
-        // Write manifest
+        // Write manifest (default: manifestDDMMYYHH.csv)
+        String actualManifestName = manifestFilename;
+        if (actualManifestName == null) {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("ddMMyyHH"));
+            actualManifestName = "manifest" + timestamp + ".csv";
+        }
         try {
-            manifest.write(outputDir);
-            System.out.println("\nGenerated manifest.csv with " + manifest.getEntryCount() + " entries");
+            manifest.write(outputDir, actualManifestName);
+            System.out.println("\nGenerated " + actualManifestName + " with " + manifest.getEntryCount() + " entries");
         } catch (IOException e) {
             System.err.println("Error writing manifest: " + e.getMessage());
             return 1;

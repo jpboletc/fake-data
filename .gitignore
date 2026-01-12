@@ -20,6 +20,7 @@ test-output*/
 output/
 all-formats-output
 *.zip
+girish-run.sh
 
 # Native image build artifacts
 *.o

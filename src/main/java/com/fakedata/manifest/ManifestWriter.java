@@ -67,10 +67,11 @@ public class ManifestWriter {
      * Writes the manifest to a CSV file.
      *
      * @param outputDir the directory to write the manifest to
+     * @param filename  the manifest filename
      * @throws IOException if writing fails
      */
-    public void write(Path outputDir) throws IOException {
-        Path manifestPath = outputDir.resolve("manifest.csv");
+    public void write(Path outputDir, String filename) throws IOException {
+        Path manifestPath = outputDir.resolve(filename);
 
         try (FileWriter fw = new FileWriter(manifestPath.toFile())) {
             // Write blank line at start
