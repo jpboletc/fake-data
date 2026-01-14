@@ -12,7 +12,7 @@ import java.nio.file.Path;
 /**
  * Generates XLSX files with realistic financial data.
  */
-public class ExcelGenerator implements FileGenerator {
+public class ExcelGenerator extends AbstractFileGenerator {
 
     private final boolean useLegacyFormat;
 
@@ -25,10 +25,7 @@ public class ExcelGenerator implements FileGenerator {
     }
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
             createSummarySheet(workbook, contentProvider);
             createRevenueSheet(workbook, contentProvider);
@@ -38,8 +35,6 @@ public class ExcelGenerator implements FileGenerator {
                 workbook.write(fos);
             }
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     private void createSummarySheet(Workbook workbook, ContentProvider contentProvider) {
@@ -185,18 +180,17 @@ public class ExcelGenerator implements FileGenerator {
         }
 
         String[] categories = contentProvider.getExpenseCategories();
-        String[] departments = {"Finance", "Marketing", "Sales", "Operations", "IT"};
 
         for (String category : categories) {
             for (int i = 0; i < 2; i++) { // 2 departments per category
-                String dept = departments[(int) (Math.random() * departments.length)];
+                String dept = contentProvider.getDepartment();
                 Row row = sheet.createRow(rowNum++);
 
                 row.createCell(0).setCellValue(category);
                 row.createCell(1).setCellValue(dept);
 
                 double budget = contentProvider.getAmount(20000, 80000);
-                double actual = budget * (0.85 + Math.random() * 0.3);
+                double actual = budget * (0.85 + contentProvider.getRandomDouble() * 0.3);
 
                 Cell budgetCell = row.createCell(2);
                 budgetCell.setCellValue(budget);

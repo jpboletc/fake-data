@@ -11,13 +11,10 @@ import java.nio.file.Path;
 /**
  * Generates ODS (OpenDocument Spreadsheet) files with realistic financial data.
  */
-public class OdsGenerator implements FileGenerator {
+public class OdsGenerator extends AbstractFileGenerator {
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         try {
             SpreadsheetDocument document = SpreadsheetDocument.newSpreadsheetDocument();
 
@@ -106,17 +103,10 @@ public class OdsGenerator implements FileGenerator {
         } catch (Exception e) {
             throw new IOException("Failed to create ODS document", e);
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     @Override
     public String getExtension() {
-        return "ods";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "ods";
     }
 

@@ -11,13 +11,10 @@ import java.nio.file.Path;
  * Generates ODP (OpenDocument Presentation) files.
  * Creates a multi-slide presentation structure.
  */
-public class OdpGenerator implements FileGenerator {
+public class OdpGenerator extends AbstractFileGenerator {
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         try {
             PresentationDocument document = PresentationDocument.newPresentationDocument();
 
@@ -45,17 +42,10 @@ public class OdpGenerator implements FileGenerator {
         } catch (Exception e) {
             throw new IOException("Failed to create ODP document: " + e.getMessage(), e);
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     @Override
     public String getExtension() {
-        return "odp";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "odp";
     }
 

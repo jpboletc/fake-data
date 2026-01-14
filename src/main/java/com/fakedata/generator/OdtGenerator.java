@@ -15,13 +15,10 @@ import java.time.LocalDate;
 /**
  * Generates ODT (OpenDocument Text) files with realistic business document content.
  */
-public class OdtGenerator implements FileGenerator {
+public class OdtGenerator extends AbstractFileGenerator {
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         try {
             TextDocument document = TextDocument.newTextDocument();
 
@@ -111,8 +108,6 @@ public class OdtGenerator implements FileGenerator {
         } catch (Exception e) {
             throw new IOException("Failed to create ODT document", e);
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     private void addSectionHeader(TextDocument document, String text) {
@@ -128,11 +123,6 @@ public class OdtGenerator implements FileGenerator {
 
     @Override
     public String getExtension() {
-        return "odt";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "odt";
     }
 

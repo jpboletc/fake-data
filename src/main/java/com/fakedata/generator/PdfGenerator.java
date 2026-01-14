@@ -15,17 +15,14 @@ import java.util.List;
 /**
  * Generates PDF files with realistic business report content.
  */
-public class PdfGenerator implements FileGenerator {
+public class PdfGenerator extends AbstractFileGenerator {
 
     private static final Color HEADER_BG = new Color(66, 133, 244);
     private static final Color HEADER_TEXT = Color.WHITE;
     private static final Color ALT_ROW_BG = new Color(245, 245, 245);
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         Document document = new Document(PageSize.A4);
         try {
             PdfWriter.getInstance(document, new FileOutputStream(filePath.toFile()));
@@ -177,17 +174,10 @@ public class PdfGenerator implements FileGenerator {
         } finally {
             document.close();
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     @Override
     public String getExtension() {
-        return "pdf";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "pdf";
     }
 

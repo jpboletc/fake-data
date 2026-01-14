@@ -232,6 +232,10 @@ public class ContentProvider {
         return departments[random.nextInt(departments.length)];
     }
 
+    public double getRandomDouble() {
+        return random.nextDouble();
+    }
+
     public String getJobTitle() {
         return faker.job().title();
     }

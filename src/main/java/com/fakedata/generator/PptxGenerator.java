@@ -13,17 +13,14 @@ import java.util.List;
 /**
  * Generates PPTX files with realistic presentation content.
  */
-public class PptxGenerator implements FileGenerator {
+public class PptxGenerator extends AbstractFileGenerator {
 
     private static final Color TITLE_COLOR = new Color(51, 51, 51);
     private static final Color SUBTITLE_COLOR = new Color(102, 102, 102);
     private static final Color ACCENT_COLOR = new Color(66, 133, 244);
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         try (XMLSlideShow ppt = new XMLSlideShow()) {
             // Title slide
             createTitleSlide(ppt, contentProvider);
@@ -46,8 +43,6 @@ public class PptxGenerator implements FileGenerator {
                 ppt.write(fos);
             }
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     private void createTitleSlide(XMLSlideShow ppt, ContentProvider contentProvider) {
@@ -216,11 +211,6 @@ public class PptxGenerator implements FileGenerator {
 
     @Override
     public String getExtension() {
-        return "pptx";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "pptx";
     }
 

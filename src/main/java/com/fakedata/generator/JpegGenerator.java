@@ -14,7 +14,7 @@ import java.util.Random;
 /**
  * Generates JPEG files with business graphics (charts, diagrams).
  */
-public class JpegGenerator implements FileGenerator {
+public class JpegGenerator extends AbstractFileGenerator {
 
     private static final int WIDTH = 1200;
     private static final int HEIGHT = 800;
@@ -30,10 +30,7 @@ public class JpegGenerator implements FileGenerator {
     private final Random random = new Random();
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = image.createGraphics();
 
@@ -76,8 +73,6 @@ public class JpegGenerator implements FileGenerator {
         g2d.dispose();
 
         ImageIO.write(image, "jpeg", filePath.toFile());
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     private void drawBarChart(Graphics2D g2d, ContentProvider contentProvider) {
@@ -265,11 +260,6 @@ public class JpegGenerator implements FileGenerator {
 
     @Override
     public String getExtension() {
-        return "jpeg";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "jpeg";
     }
 

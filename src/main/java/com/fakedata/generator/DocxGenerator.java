@@ -12,13 +12,10 @@ import java.util.List;
 /**
  * Generates DOCX files with realistic business document content.
  */
-public class DocxGenerator implements FileGenerator {
+public class DocxGenerator extends AbstractFileGenerator {
 
     @Override
-    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
-        String fullFilename = filename + "." + getExtension();
-        Path filePath = outputDir.resolve(fullFilename);
-
+    protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
         try (XWPFDocument document = new XWPFDocument()) {
             // Title
             XWPFParagraph titlePara = document.createParagraph();
@@ -121,8 +118,6 @@ public class DocxGenerator implements FileGenerator {
                 document.write(fos);
             }
         }
-
-        return new GeneratedFile(filePath, fullFilename);
     }
 
     private void addSectionHeader(XWPFDocument document, String text) {
@@ -177,11 +172,6 @@ public class DocxGenerator implements FileGenerator {
 
     @Override
     public String getExtension() {
-        return "docx";
-    }
-
-    @Override
-    public String getFormatKey() {
         return "docx";
     }
 

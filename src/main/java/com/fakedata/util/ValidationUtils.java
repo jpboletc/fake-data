@@ -1,6 +1,7 @@
 package com.fakedata.util;
 
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * Utility class for validating submission references.
@@ -42,7 +43,7 @@ public class ValidationUtils {
         try {
             Pattern.compile(pattern);
             return true;
-        } catch (Exception e) {
+        } catch (PatternSyntaxException e) {
             return false;
         }
     }
