@@ -3,21 +3,18 @@ package com.fakedata.generator;
 import com.fakedata.content.ContentProvider;
 import org.apache.poi.xslf.usermodel.*;
 
-import java.awt.Color;
 import java.awt.Rectangle;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
+import static com.fakedata.generator.GeneratorColors.*;
+
 /**
  * Generates PPTX files with realistic presentation content.
  */
 public class PptxGenerator extends AbstractFileGenerator {
-
-    private static final Color TITLE_COLOR = new Color(51, 51, 51);
-    private static final Color SUBTITLE_COLOR = new Color(102, 102, 102);
-    private static final Color ACCENT_COLOR = new Color(66, 133, 244);
 
     @Override
     protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
@@ -57,7 +54,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         titleRun.setText(contentProvider.getPresentationName().replace("_", " "));
         titleRun.setFontSize(40.0);
         titleRun.setBold(true);
-        titleRun.setFontColor(TITLE_COLOR);
+        titleRun.setFontColor(TEXT_DARK);
 
         // Subtitle (company name)
         XSLFTextBox subtitleBox = slide.createTextBox();
@@ -67,7 +64,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         XSLFTextRun subtitleRun = subtitlePara.addNewTextRun();
         subtitleRun.setText(contentProvider.getCompanyName());
         subtitleRun.setFontSize(24.0);
-        subtitleRun.setFontColor(SUBTITLE_COLOR);
+        subtitleRun.setFontColor(TEXT_MEDIUM);
 
         // Date and presenter
         XSLFTextBox infoBox = slide.createTextBox();
@@ -77,7 +74,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         XSLFTextRun infoRun = infoPara.addNewTextRun();
         infoRun.setText(contentProvider.getFullName() + "\n" + contentProvider.getQuarter() + " " + contentProvider.getYear());
         infoRun.setFontSize(16.0);
-        infoRun.setFontColor(SUBTITLE_COLOR);
+        infoRun.setFontColor(TEXT_MEDIUM);
     }
 
     private void createAgendaSlide(XMLSlideShow ppt, ContentProvider contentProvider) {
@@ -98,7 +95,7 @@ public class PptxGenerator extends AbstractFileGenerator {
             XSLFTextRun run = para.addNewTextRun();
             run.setText(agendaItems[i]);
             run.setFontSize(20.0);
-            run.setFontColor(TITLE_COLOR);
+            run.setFontColor(TEXT_DARK);
         }
     }
 
@@ -122,7 +119,7 @@ public class PptxGenerator extends AbstractFileGenerator {
             XSLFTextRun run = para.addNewTextRun();
             run.setText(point);
             run.setFontSize(18.0);
-            run.setFontColor(TITLE_COLOR);
+            run.setFontColor(TEXT_DARK);
         }
 
         // Add a sub-bullet for some items
@@ -133,7 +130,7 @@ public class PptxGenerator extends AbstractFileGenerator {
             XSLFTextRun subRun = subPara.addNewTextRun();
             subRun.setText(contentProvider.getSentence());
             subRun.setFontSize(14.0);
-            subRun.setFontColor(SUBTITLE_COLOR);
+            subRun.setFontColor(TEXT_MEDIUM);
         }
     }
 
@@ -154,12 +151,12 @@ public class PptxGenerator extends AbstractFileGenerator {
             numRun.setText(num++ + ". ");
             numRun.setFontSize(18.0);
             numRun.setBold(true);
-            numRun.setFontColor(ACCENT_COLOR);
+            numRun.setFontColor(ACCENT_BLUE);
 
             XSLFTextRun textRun = para.addNewTextRun();
             textRun.setText(takeaway);
             textRun.setFontSize(18.0);
-            textRun.setFontColor(TITLE_COLOR);
+            textRun.setFontColor(TEXT_DARK);
         }
     }
 
@@ -175,7 +172,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         thankYouRun.setText("Thank You");
         thankYouRun.setFontSize(44.0);
         thankYouRun.setBold(true);
-        thankYouRun.setFontColor(ACCENT_COLOR);
+        thankYouRun.setFontColor(ACCENT_BLUE);
 
         // Questions text
         XSLFTextBox questionsBox = slide.createTextBox();
@@ -185,7 +182,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         XSLFTextRun questionsRun = questionsPara.addNewTextRun();
         questionsRun.setText("Questions?");
         questionsRun.setFontSize(28.0);
-        questionsRun.setFontColor(SUBTITLE_COLOR);
+        questionsRun.setFontColor(TEXT_MEDIUM);
 
         // Contact info
         XSLFTextBox contactBox = slide.createTextBox();
@@ -195,7 +192,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         XSLFTextRun contactRun = contactPara.addNewTextRun();
         contactRun.setText(contentProvider.getFullName() + "\n" + contentProvider.getEmail());
         contactRun.setFontSize(14.0);
-        contactRun.setFontColor(SUBTITLE_COLOR);
+        contactRun.setFontColor(TEXT_MEDIUM);
     }
 
     private void addSlideTitle(XSLFSlide slide, String title) {
@@ -206,7 +203,7 @@ public class PptxGenerator extends AbstractFileGenerator {
         titleRun.setText(title);
         titleRun.setFontSize(32.0);
         titleRun.setBold(true);
-        titleRun.setFontColor(TITLE_COLOR);
+        titleRun.setFontColor(TEXT_DARK);
     }
 
     @Override

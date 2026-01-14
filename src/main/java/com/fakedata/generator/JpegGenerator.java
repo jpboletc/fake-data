@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;
 
+import static com.fakedata.generator.GeneratorColors.*;
+
 /**
  * Generates JPEG files with business graphics (charts, diagrams).
  */
@@ -18,14 +20,6 @@ public class JpegGenerator extends AbstractFileGenerator {
 
     private static final int WIDTH = 1200;
     private static final int HEIGHT = 800;
-    private static final Color[] CHART_COLORS = {
-            new Color(66, 133, 244),   // Blue
-            new Color(219, 68, 55),    // Red
-            new Color(244, 180, 0),    // Yellow
-            new Color(15, 157, 88),    // Green
-            new Color(171, 71, 188),   // Purple
-            new Color(255, 112, 67)    // Orange
-    };
 
     private final Random random = new Random();
 
@@ -43,7 +37,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         // Draw title
-        g2d.setColor(new Color(51, 51, 51));
+        g2d.setColor(TEXT_DARK);
         g2d.setFont(new Font("SansSerif", Font.BOLD, 28));
         String title = contentProvider.getCompanyName() + " - " + contentProvider.getQuarter() + " " + contentProvider.getYear();
         FontMetrics fm = g2d.getFontMetrics();
@@ -53,7 +47,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 16));
         String subtitle = contentProvider.getImageName().replace("_", " ");
         fm = g2d.getFontMetrics();
-        g2d.setColor(new Color(102, 102, 102));
+        g2d.setColor(TEXT_MEDIUM);
         g2d.drawString(subtitle, (WIDTH - fm.stringWidth(subtitle)) / 2, 80);
 
         // Decide chart type randomly
@@ -65,7 +59,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         }
 
         // Draw footer
-        g2d.setColor(new Color(153, 153, 153));
+        g2d.setColor(TEXT_LIGHT);
         g2d.setFont(new Font("SansSerif", Font.ITALIC, 12));
         String footer = "Confidential - " + contentProvider.getCompanyName();
         g2d.drawString(footer, 50, HEIGHT - 30);
@@ -82,7 +76,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         int chartHeight = HEIGHT - 250;
 
         // Draw axes
-        g2d.setColor(new Color(51, 51, 51));
+        g2d.setColor(TEXT_DARK);
         g2d.setStroke(new BasicStroke(2));
         g2d.drawLine(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight); // X-axis
         g2d.drawLine(chartX, chartY, chartX, chartY + chartHeight); // Y-axis
@@ -105,11 +99,11 @@ public class JpegGenerator extends AbstractFileGenerator {
             int x = chartX + 50 + i * (barWidth + gap);
             int y = chartY + chartHeight - barHeight;
 
-            g2d.setColor(CHART_COLORS[i % CHART_COLORS.length]);
+            g2d.setColor(CHART_PALETTE[i % CHART_PALETTE.length]);
             g2d.fill(new Rectangle2D.Double(x, y, barWidth - gap, barHeight));
 
             // Draw value on top
-            g2d.setColor(new Color(51, 51, 51));
+            g2d.setColor(TEXT_DARK);
             g2d.setFont(new Font("SansSerif", Font.BOLD, 11));
             String value = String.format("$%.0fK", values[i] / 1000);
             FontMetrics fm = g2d.getFontMetrics();
@@ -128,9 +122,9 @@ public class JpegGenerator extends AbstractFileGenerator {
             double val = maxValue * i / 5;
             int y = chartY + chartHeight - (int) ((val / maxValue) * (chartHeight - 50));
             g2d.drawString(String.format("$%.0fK", val / 1000), chartX - 60, y + 5);
-            g2d.setColor(new Color(220, 220, 220));
+            g2d.setColor(BG_GRID);
             g2d.drawLine(chartX, y, chartX + chartWidth, y);
-            g2d.setColor(new Color(51, 51, 51));
+            g2d.setColor(TEXT_DARK);
         }
     }
 
@@ -153,7 +147,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         double startAngle = 0;
         for (int i = 0; i < numSlices; i++) {
             double angle = (values[i] / total) * 360;
-            g2d.setColor(CHART_COLORS[i % CHART_COLORS.length]);
+            g2d.setColor(CHART_PALETTE[i % CHART_PALETTE.length]);
             g2d.fill(new Arc2D.Double(centerX - radius, centerY - radius,
                     radius * 2, radius * 2, startAngle, angle, Arc2D.PIE));
             startAngle += angle;
@@ -164,9 +158,9 @@ public class JpegGenerator extends AbstractFileGenerator {
         int legendY = centerY - (numSlices * 30) / 2;
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 14));
         for (int i = 0; i < numSlices; i++) {
-            g2d.setColor(CHART_COLORS[i % CHART_COLORS.length]);
+            g2d.setColor(CHART_PALETTE[i % CHART_PALETTE.length]);
             g2d.fillRect(legendX, legendY + i * 30, 20, 20);
-            g2d.setColor(new Color(51, 51, 51));
+            g2d.setColor(TEXT_DARK);
             String label = String.format("%s (%.1f%%)", categories[i], (values[i] / total) * 100);
             g2d.drawString(label, legendX + 30, legendY + i * 30 + 15);
         }
@@ -179,7 +173,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         int chartHeight = HEIGHT - 250;
 
         // Draw axes
-        g2d.setColor(new Color(51, 51, 51));
+        g2d.setColor(TEXT_DARK);
         g2d.setStroke(new BasicStroke(2));
         g2d.drawLine(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
         g2d.drawLine(chartX, chartY, chartX, chartY + chartHeight);
@@ -198,7 +192,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         }
 
         // Draw grid lines
-        g2d.setColor(new Color(220, 220, 220));
+        g2d.setColor(BG_GRID);
         g2d.setStroke(new BasicStroke(1));
         for (int i = 1; i <= 5; i++) {
             int y = chartY + chartHeight - (int) ((i / 5.0) * (chartHeight - 50));
@@ -210,7 +204,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         g2d.setStroke(new BasicStroke(3));
 
         // Line 1
-        g2d.setColor(CHART_COLORS[0]);
+        g2d.setColor(CHART_PALETTE[0]);
         int[] x1 = new int[numPoints];
         int[] y1 = new int[numPoints];
         for (int i = 0; i < numPoints; i++) {
@@ -220,7 +214,7 @@ public class JpegGenerator extends AbstractFileGenerator {
         g2d.drawPolyline(x1, y1, numPoints);
 
         // Line 2
-        g2d.setColor(CHART_COLORS[1]);
+        g2d.setColor(CHART_PALETTE[1]);
         int[] x2 = new int[numPoints];
         int[] y2 = new int[numPoints];
         for (int i = 0; i < numPoints; i++) {
@@ -231,15 +225,15 @@ public class JpegGenerator extends AbstractFileGenerator {
 
         // Draw points
         for (int i = 0; i < numPoints; i++) {
-            g2d.setColor(CHART_COLORS[0]);
+            g2d.setColor(CHART_PALETTE[0]);
             g2d.fillOval(x1[i] - 5, y1[i] - 5, 10, 10);
-            g2d.setColor(CHART_COLORS[1]);
+            g2d.setColor(CHART_PALETTE[1]);
             g2d.fillOval(x2[i] - 5, y2[i] - 5, 10, 10);
         }
 
         // X-axis labels (months)
         String[] months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-        g2d.setColor(new Color(51, 51, 51));
+        g2d.setColor(TEXT_DARK);
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 10));
         for (int i = 0; i < numPoints; i++) {
             g2d.drawString(months[i], chartX + i * pointGap - 10, chartY + chartHeight + 20);
@@ -247,14 +241,14 @@ public class JpegGenerator extends AbstractFileGenerator {
 
         // Legend
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        g2d.setColor(CHART_COLORS[0]);
+        g2d.setColor(CHART_PALETTE[0]);
         g2d.fillRect(chartX + chartWidth - 200, chartY + 10, 15, 15);
-        g2d.setColor(new Color(51, 51, 51));
+        g2d.setColor(TEXT_DARK);
         g2d.drawString("Revenue", chartX + chartWidth - 180, chartY + 22);
 
-        g2d.setColor(CHART_COLORS[1]);
+        g2d.setColor(CHART_PALETTE[1]);
         g2d.fillRect(chartX + chartWidth - 200, chartY + 35, 15, 15);
-        g2d.setColor(new Color(51, 51, 51));
+        g2d.setColor(TEXT_DARK);
         g2d.drawString("Expenses", chartX + chartWidth - 180, chartY + 47);
     }
 

@@ -177,35 +177,39 @@ public class ContentProvider {
         return theme;
     }
 
+    private String[] getThemedArray(Map<Theme, String[]> map) {
+        return map.getOrDefault(theme, map.get(Theme.DEFAULT));
+    }
+
     // Document naming methods
     public String getPdfName() {
-        String[] names = PDF_NAMES_BY_THEME.getOrDefault(theme, PDF_NAMES_BY_THEME.get(Theme.DEFAULT));
+        String[] names = getThemedArray(PDF_NAMES_BY_THEME);
         return names[random.nextInt(names.length)];
     }
 
     public String getSpreadsheetName() {
-        String[] names = SPREADSHEET_NAMES_BY_THEME.getOrDefault(theme, SPREADSHEET_NAMES_BY_THEME.get(Theme.DEFAULT));
+        String[] names = getThemedArray(SPREADSHEET_NAMES_BY_THEME);
         return names[random.nextInt(names.length)];
     }
 
     public String getDocumentName() {
-        String[] names = DOCUMENT_NAMES_BY_THEME.getOrDefault(theme, DOCUMENT_NAMES_BY_THEME.get(Theme.DEFAULT));
+        String[] names = getThemedArray(DOCUMENT_NAMES_BY_THEME);
         return names[random.nextInt(names.length)];
     }
 
     public String getPresentationName() {
-        String[] names = PRESENTATION_NAMES_BY_THEME.getOrDefault(theme, PRESENTATION_NAMES_BY_THEME.get(Theme.DEFAULT));
+        String[] names = getThemedArray(PRESENTATION_NAMES_BY_THEME);
         return names[random.nextInt(names.length)];
     }
 
     public String getImageName() {
-        String[] names = IMAGE_NAMES_BY_THEME.getOrDefault(theme, IMAGE_NAMES_BY_THEME.get(Theme.DEFAULT));
+        String[] names = getThemedArray(IMAGE_NAMES_BY_THEME);
         return names[random.nextInt(names.length)];
     }
 
     // Business content methods
     public String getCompanyName() {
-        String[] prefixes = COMPANY_PREFIXES_BY_THEME.getOrDefault(theme, COMPANY_PREFIXES_BY_THEME.get(Theme.DEFAULT));
+        String[] prefixes = getThemedArray(COMPANY_PREFIXES_BY_THEME);
         String prefix = prefixes[random.nextInt(prefixes.length)];
         return faker.company().name().split(" ")[0] + " " + prefix;
     }
@@ -228,7 +232,7 @@ public class ContentProvider {
     }
 
     public String getDepartment() {
-        String[] departments = DEPARTMENTS_BY_THEME.getOrDefault(theme, DEPARTMENTS_BY_THEME.get(Theme.DEFAULT));
+        String[] departments = getThemedArray(DEPARTMENTS_BY_THEME);
         return departments[random.nextInt(departments.length)];
     }
 
@@ -424,17 +428,17 @@ public class ContentProvider {
 
     // Text content methods
     public String getParagraph() {
-        String[] paragraphs = PARAGRAPHS_BY_THEME.getOrDefault(theme, PARAGRAPHS_BY_THEME.get(Theme.DEFAULT));
+        String[] paragraphs = getThemedArray(PARAGRAPHS_BY_THEME);
         return paragraphs[random.nextInt(paragraphs.length)];
     }
 
     public String getSentence() {
-        String[] sentences = SENTENCES_BY_THEME.getOrDefault(theme, SENTENCES_BY_THEME.get(Theme.DEFAULT));
+        String[] sentences = getThemedArray(SENTENCES_BY_THEME);
         return sentences[random.nextInt(sentences.length)];
     }
 
     public List<String> getBulletPoints(int count) {
-        String[] sentences = SENTENCES_BY_THEME.getOrDefault(theme, SENTENCES_BY_THEME.get(Theme.DEFAULT));
+        String[] sentences = getThemedArray(SENTENCES_BY_THEME);
         List<String> points = new ArrayList<>();
         List<Integer> usedIndices = new ArrayList<>();
 

@@ -12,14 +12,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
+import static com.fakedata.generator.GeneratorColors.*;
+
 /**
  * Generates PDF files with realistic business report content.
  */
 public class PdfGenerator extends AbstractFileGenerator {
-
-    private static final Color HEADER_BG = new Color(66, 133, 244);
-    private static final Color HEADER_TEXT = Color.WHITE;
-    private static final Color ALT_ROW_BG = new Color(245, 245, 245);
 
     @Override
     protected void doGenerate(Path filePath, ContentProvider contentProvider) throws IOException {
@@ -29,7 +27,7 @@ public class PdfGenerator extends AbstractFileGenerator {
             document.open();
 
             // Add title
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 24, new Color(51, 51, 51));
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 24, TEXT_DARK);
             Paragraph title = new Paragraph(contentProvider.getReportTitle(), titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(20);
@@ -49,7 +47,7 @@ public class PdfGenerator extends AbstractFileGenerator {
             document.add(companyInfo);
 
             // Executive Summary section
-            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, new Color(66, 133, 244));
+            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, ACCENT_BLUE);
             Paragraph summaryHeader = new Paragraph("Executive Summary", sectionFont);
             summaryHeader.setSpacingBefore(15);
             summaryHeader.setSpacingAfter(10);
@@ -101,14 +99,14 @@ public class PdfGenerator extends AbstractFileGenerator {
             float[] columnWidths = {2f, 1.5f, 1.5f, 1f};
             table.setWidths(columnWidths);
 
-            Font tableHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, HEADER_TEXT);
+            Font tableHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
             Font tableCellFont = FontFactory.getFont(FontFactory.HELVETICA, 10);
 
             // Header row
             String[] headers = {"Metric", "Current", "Previous", "Change"};
             for (String header : headers) {
                 PdfPCell cell = new PdfPCell(new Phrase(header, tableHeaderFont));
-                cell.setBackgroundColor(HEADER_BG);
+                cell.setBackgroundColor(ACCENT_BLUE);
                 cell.setPadding(8);
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 table.addCell(cell);
@@ -118,7 +116,7 @@ public class PdfGenerator extends AbstractFileGenerator {
             String[] metrics = {"Revenue", "Expenses", "Profit", "Growth Rate", "Market Share", "Customer Retention"};
             boolean altRow = false;
             for (String metric : metrics) {
-                Color rowBg = altRow ? ALT_ROW_BG : Color.WHITE;
+                Color rowBg = altRow ? BG_ALT_ROW : Color.WHITE;
 
                 PdfPCell metricCell = new PdfPCell(new Phrase(metric, tableCellFont));
                 metricCell.setBackgroundColor(rowBg);
@@ -138,7 +136,7 @@ public class PdfGenerator extends AbstractFileGenerator {
                 table.addCell(prevCell);
 
                 double change = contentProvider.getAmount(-15, 25);
-                Color changeColor = change >= 0 ? new Color(15, 157, 88) : new Color(219, 68, 55);
+                Color changeColor = change >= 0 ? STATUS_POSITIVE : STATUS_NEGATIVE;
                 Font changeFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, changeColor);
                 PdfPCell changeCell = new PdfPCell(new Phrase(String.format("%+.1f%%", change), changeFont));
                 changeCell.setBackgroundColor(rowBg);
@@ -165,7 +163,7 @@ public class PdfGenerator extends AbstractFileGenerator {
 
             // Footer
             Paragraph footer = new Paragraph("\n\nConfidential - " + contentProvider.getCompanyName(),
-                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10, new Color(153, 153, 153)));
+                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10, TEXT_LIGHT));
             footer.setAlignment(Element.ALIGN_CENTER);
             document.add(footer);
 
