@@ -22,6 +22,20 @@ public interface FileGenerator {
     GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException;
 
     /**
+     * Generates a file with realistic content, targeting a specific page count.
+     *
+     * @param outputDir       the directory to write the file to
+     * @param filename        the filename (without extension)
+     * @param contentProvider the content provider for generating realistic data
+     * @param targetPages     target number of pages (0 = use generator default)
+     * @return the generated file result containing the full filename
+     * @throws IOException if file generation fails
+     */
+    default GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider, int targetPages) throws IOException {
+        return generate(outputDir, filename, contentProvider);
+    }
+
+    /**
      * Returns the file extension for this generator (e.g., "pdf", "xlsx").
      *
      * @return the file extension without the dot

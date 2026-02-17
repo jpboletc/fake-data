@@ -36,7 +36,9 @@ public class FakeDataApp implements Callable<Integer> {
     private Path inputFile;
 
     @Option(names = {"-F", "--formats"},
-            description = "Format specification (e.g., 'pdf:2,xlsx:1,pptx:1'). Supported: pdf, jpeg, xlsx, xls, ods, docx, odt, pptx, odp",
+            description = "Format specification (e.g., 'pdf:2,xlsx:1,pptx:1'). " +
+                    "Add page count as third value for PDF: 'pdf:2:20' (2 PDFs, ~20 pages each). " +
+                    "Supported: pdf, jpeg, xlsx, xls, ods, docx, odt, pptx, odp",
             defaultValue = "pdf:1,xlsx:1,docx:1,pptx:1")
     private String formats;
 
@@ -57,6 +59,11 @@ public class FakeDataApp implements Callable<Integer> {
     @Option(names = {"-m", "--manifest"},
             description = "Manifest filename (e.g., 'manifest12012611.csv' for DDMMYYHH format)")
     private String manifestFilename;
+
+    /**
+     * Holds parsed format specification: file count and target page count.
+     */
+    record FormatSpec(int count, int targetPages) {}
 
     // Registry of available generators
     private static final Map<String, FileGenerator> GENERATORS = new LinkedHashMap<>();
@@ -99,7 +106,7 @@ public class FakeDataApp implements Callable<Integer> {
         }
 
         // Parse format specification
-        Map<String, Integer> formatCounts = parseFormats();
+        Map<String, FormatSpec> formatCounts = parseFormats();
         if (formatCounts.isEmpty()) {
             System.err.println("Error: No valid formats specified");
             return 1;
@@ -131,9 +138,9 @@ public class FakeDataApp implements Callable<Integer> {
             ContentProvider contentProvider = new ContentProvider(theme);
             int fileNumber = 1;
 
-            for (Map.Entry<String, Integer> formatEntry : formatCounts.entrySet()) {
+            for (Map.Entry<String, FormatSpec> formatEntry : formatCounts.entrySet()) {
                 String format = formatEntry.getKey();
-                int count = formatEntry.getValue();
+                FormatSpec spec = formatEntry.getValue();
 
                 FileGenerator generator = GENERATORS.get(format);
                 if (generator == null) {
@@ -141,7 +148,7 @@ public class FakeDataApp implements Callable<Integer> {
                     continue;
                 }
 
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < spec.count(); i++) {
                     try {
                         String baseName = generator.generateFilename(contentProvider);
                         manifest.addEntry(submissionRef, fileNumber, baseName + "." + generator.getExtension());
@@ -150,8 +157,8 @@ public class FakeDataApp implements Callable<Integer> {
                         // Extract just the base filename (without submission prefix) for generator
                         String filenameForGenerator = submissionRef + "_" + fileNumber + "_" + baseName;
 
-                        GeneratedFile generated = generator.generate(outputDir, filenameForGenerator, contentProvider);
-                        System.out.println("  Created: " + generated.filename());
+                        GeneratedFile generated = generator.generate(outputDir, filenameForGenerator, contentProvider, spec.targetPages());
+                        System.out.println("  Created: " + generated.filename() + (spec.targetPages() > 0 ? " (~" + spec.targetPages() + " pages)" : ""));
                         fileNumber++;
                         totalFiles++;
                     } catch (IOException e) {
@@ -247,11 +254,12 @@ public class FakeDataApp implements Callable<Integer> {
     /**
      * Parses format specification string.
      * Format: "pdf:2,xlsx:1,pptx:1" or just "pdf,xlsx" (count defaults to 1)
+     * Extended: "pdf:2:20" means 2 PDFs with ~20 pages each
      *
-     * @return map of format to count
+     * @return map of format to FormatSpec (count + targetPages)
      */
-    private Map<String, Integer> parseFormats() {
-        Map<String, Integer> result = new LinkedHashMap<>();
+    private Map<String, FormatSpec> parseFormats() {
+        Map<String, FormatSpec> result = new LinkedHashMap<>();
 
         if (formats == null || formats.isBlank()) {
             return result;
@@ -263,22 +271,35 @@ public class FakeDataApp implements Callable<Integer> {
 
             String format;
             int count = 1;
+            int targetPages = 0;
 
-            int colonIdx = spec.indexOf(':');
-            if (colonIdx >= 0) {
-                format = spec.substring(0, colonIdx).trim();
+            String[] parts = spec.split(":");
+            format = parts[0].trim();
+
+            if (parts.length >= 2) {
                 try {
-                    count = Integer.parseInt(spec.substring(colonIdx + 1).trim());
+                    count = Integer.parseInt(parts[1].trim());
                     if (count < 1) count = 1;
                 } catch (NumberFormatException e) {
                     System.err.println("Warning: Invalid count in '" + spec + "', using 1");
                 }
-            } else {
-                format = spec;
+            }
+            if (parts.length >= 3) {
+                try {
+                    targetPages = Integer.parseInt(parts[2].trim());
+                    if (targetPages < 0) targetPages = 0;
+                } catch (NumberFormatException e) {
+                    System.err.println("Warning: Invalid page count in '" + spec + "', using default");
+                }
             }
 
             if (GENERATORS.containsKey(format)) {
-                result.put(format, result.getOrDefault(format, 0) + count);
+                FormatSpec existing = result.get(format);
+                if (existing != null) {
+                    result.put(format, new FormatSpec(existing.count() + count, targetPages > 0 ? targetPages : existing.targetPages()));
+                } else {
+                    result.put(format, new FormatSpec(count, targetPages));
+                }
             } else {
                 System.err.println("Warning: Unknown format '" + format + "', skipping. Valid formats: " + GENERATORS.keySet());
             }

@@ -37,12 +37,30 @@ public abstract class AbstractFileGenerator implements FileGenerator {
      */
     @Override
     public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider) throws IOException {
+        return generate(outputDir, filename, contentProvider, 0);
+    }
+
+    @Override
+    public GeneratedFile generate(Path outputDir, String filename, ContentProvider contentProvider, int targetPages) throws IOException {
         String fullFilename = buildFullFilename(filename);
         Path filePath = resolveFilePath(outputDir, fullFilename);
 
-        doGenerate(filePath, contentProvider);
+        doGenerate(filePath, contentProvider, targetPages);
 
         return createResult(filePath, fullFilename);
+    }
+
+    /**
+     * Performs the actual file generation. Implemented by subclasses.
+     * Default implementation ignores targetPages and delegates to the simpler overload.
+     *
+     * @param filePath        the full path where the file should be written
+     * @param contentProvider the content provider for generating realistic data
+     * @param targetPages     target number of pages (0 = use generator default)
+     * @throws IOException if file generation fails
+     */
+    protected void doGenerate(Path filePath, ContentProvider contentProvider, int targetPages) throws IOException {
+        doGenerate(filePath, contentProvider);
     }
 
     /**

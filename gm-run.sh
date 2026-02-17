@@ -12,3 +12,17 @@ java -jar /Users/jpb/Dev/work/fake-data/build/libs/fake-data-all.jar --refs "IBC
 mv test-output-gm-mixed/manifest14012611.csv .
 
 zip -r test-output-gm-mixed2.zip test-output-gm-mixed
+
+
+
+java -jar /Users/jpb/Dev/work/fake-data/build/libs/fake-data-all.jar --refs "JI90MYRA8AXA" --manifest "manifest14012614.csv" --formats "pdf:1,jpeg:1,xlsx:1,xls:1,ods:1,docx:1,odt:1,pptx:1,odp:1" --output /Users/jpb/Dev/work/fake-data/JI90MYRA8AXA 2>&1
+
+zip -r JI90MYRA8AXA.zip JI90MYRA8AXA
+
+
+
+java -jar /Users/jpb/Dev/work/fake-data/build/libs/fake-data-all.jar --refs "MWDFRYPBGMYV" --manifest "manifest14012611.csv" --formats "pdf:1,jpeg:1,xlsx:1,xls:1,ods:1,docx:1,odt:1,pptx:1,odp:1" --output /Users/jpb/Dev/work/fake-data/MWDFRYPBGMYV 2>&1
+java -jar /Users/jpb/Dev/work/fake-data/build/libs/fake-data-all.jar --refs "B82E6351RZP7" --manifest "manifest14012612.csv" --formats "pdf:1,jpeg:1,xlsx:1,xls:1,ods:1,docx:1,odt:1,pptx:1,odp:1" --output /Users/jpb/Dev/work/fake-data/MWDFRYPBGMYV 2>&1
+
+zip -r MWDFRYPBGMYV.zip MWDFRYPBGMYV
+
