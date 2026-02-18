@@ -233,9 +233,10 @@ if (Test-Path $Output) {
 Write-Host "--- Phase 1: Generating varied JSON files ---"
 Write-Host ""
 
-$projectNum = 1
+$templateNum = 1
 foreach ($template in $templates) {
-    $outDir = Join-Path $Output "projectType$projectNum"
+    $templateTag = [System.IO.Path]::GetFileNameWithoutExtension($template.Name)
+    $outDir = Join-Path $Output $templateTag
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
     $sourceContent = Get-Content -Path $template.FullName -Raw
@@ -247,7 +248,7 @@ foreach ($template in $templates) {
         }
     }
 
-    Write-Host "=== [$projectNum/$($templates.Count)] $($template.Name) -> projectType$projectNum ==="
+    Write-Host "=== [$templateNum/$($templates.Count)] $($template.Name) -> $templateTag ==="
 
     for ($n = 1; $n -le $Variations; $n++) {
         # Generate replacements
@@ -277,7 +278,7 @@ foreach ($template in $templates) {
     }
 
     Write-Host ""
-    $projectNum++
+    $templateNum++
 }
 
 # ============================================================
@@ -295,15 +296,13 @@ $manifestPath = Join-Path $attachmentsOutDir "manifest.csv"
 "mail_item_id,attached_id,filename" | Set-Content -Path $manifestPath -Encoding UTF8
 
 $totalCopied = 0
-$projectNum = 1
 foreach ($template in $templates) {
-    $projectTag = "projectType$projectNum"
-    $jsonDir = Join-Path $Output $projectTag
-    $srcAttachDir = Join-Path $AttachmentsDir $projectTag
+    $templateTag = [System.IO.Path]::GetFileNameWithoutExtension($template.Name)
+    $jsonDir = Join-Path $Output $templateTag
+    $srcAttachDir = Join-Path $AttachmentsDir $templateTag
 
     if (-not (Test-Path $srcAttachDir)) {
-        Write-Warning "No attachments directory for $projectTag at $srcAttachDir - skipping"
-        $projectNum++
+        Write-Warning "No attachments directory for '$templateTag' at $srcAttachDir - skipping"
         continue
     }
 
@@ -312,7 +311,6 @@ foreach ($template in $templates) {
 
     if ($sourceAttachments.Count -eq 0) {
         Write-Warning "No attachment files found in $srcAttachDir"
-        $projectNum++
         continue
     }
 
@@ -326,21 +324,19 @@ foreach ($template in $templates) {
     if ($firstFile -match '^([^_]+)_') {
         $originalPrefix = $Matches[1]
     } else {
-        Write-Warning "Cannot detect prefix from '$firstFile' - skipping $projectTag"
-        $projectNum++
+        Write-Warning "Cannot detect prefix from '$firstFile' - skipping $templateTag"
         continue
     }
 
-    # Get generated JSON files for this projectType
+    # Get generated JSON files for this template
     $jsonFiles = Get-ChildItem -Path $jsonDir -Filter "*.json" -ErrorAction SilentlyContinue
 
     if ($null -eq $jsonFiles -or $jsonFiles.Count -eq 0) {
         Write-Warning "No JSON files found in $jsonDir"
-        $projectNum++
         continue
     }
 
-    Write-Host "=== ${projectTag}: $($jsonFiles.Count) submissions x $($sourceAttachments.Count) attachments (prefix: ${originalPrefix}) ==="
+    Write-Host "=== ${templateTag}: $($jsonFiles.Count) submissions x $($sourceAttachments.Count) attachments (prefix: ${originalPrefix}) ==="
 
     foreach ($jsonFile in $jsonFiles) {
         # Submission reference is the filename without .json
@@ -363,7 +359,6 @@ foreach ($template in $templates) {
     }
 
     Write-Host ""
-    $projectNum++
 }
 
 # ============================================================
