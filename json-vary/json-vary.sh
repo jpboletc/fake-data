@@ -189,10 +189,14 @@ sed_escape() {
 # --- Main ---
 
 show_help() {
-  echo "Usage: $0 <source.json> <count> <value1> [value2] [value3] ..."
+  echo "Usage: $0 [-o <dir>] <source.json> <count> <value1> [value2] [value3] ..."
   echo ""
   echo "Generates <count> copies of source.json with each <value> replaced"
   echo "by a random value matching its detected pattern."
+  echo ""
+  echo "Options:"
+  echo "  -o, --output <dir>   Output directory (default: ./json-vary-output)"
+  echo "  -h, --help           Show this help"
   echo ""
   echo "  Pattern detection (automatic):"
   echo "    All digits (4+ chars)        -> random digits, same length"
@@ -209,12 +213,30 @@ show_help() {
   echo "    'T9Q0-IIIB-PP52' \\"
   echo "    'a8d91e74-2285-4582-9d7c-fe6b400da347' \\"
   echo "    'SUA tec04'"
+  echo ""
+  echo "  $0 -o /tmp/varied creative-relief.json 5 '9237766545'"
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  show_help
-  exit 0
-fi
+OUTPUT_DIR="./json-vary-output"
+
+# Parse optional flags
+while [[ "${1:-}" == -* ]]; do
+  case "$1" in
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    -o|--output)
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      show_help
+      exit 1
+      ;;
+  esac
+done
 
 if [ $# -lt 3 ]; then
   show_help
@@ -273,18 +295,7 @@ for ((i=0; i<${#SORTED_INDICES[@]}; i++)); do
 done
 
 # Create output directory
-OUTPUT_DIR="./json-vary-output"
 mkdir -p "$OUTPUT_DIR"
-
-# Write manifest header
-MANIFEST="$OUTPUT_DIR/vary-manifest.csv"
-{
-  printf "filename"
-  for ((i=0; i<${#ORIGINAL_VALUES[@]}; i++)); do
-    printf ",original_%d" "$((i+1))"
-  done
-  printf "\n"
-} > "$MANIFEST"
 
 # Verify all values exist in source
 SOURCE_CONTENT=$(cat "$SOURCE_FILE")
@@ -322,19 +333,9 @@ for ((n=1; n<=COUNT; n++)); do
   # Write output file
   echo "$CONTENT" > "$OUTPUT_DIR/$OUT_NAME"
 
-  # Append to manifest
-  {
-    printf "%s" "$OUT_NAME"
-    for ((i=0; i<${#REPLACEMENTS[@]}; i++)); do
-      printf ",%s" "${REPLACEMENTS[$i]}"
-    done
-    printf "\n"
-  } >> "$MANIFEST"
-
   echo "  [$n/$COUNT] $OUT_NAME"
 done
 
 echo ""
 echo "Output: $OUTPUT_DIR/"
-echo "Manifest: $MANIFEST"
 echo "Done."
