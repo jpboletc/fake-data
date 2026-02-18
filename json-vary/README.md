@@ -6,11 +6,20 @@ Utilities for generating varied JSON test submissions with matching renamed atta
 
 | Script | Platform | Description |
 |--------|----------|-------------|
-| `run-all.ps1` | PowerShell (Windows/macOS/Linux) | All-in-one: generates varied JSONs and copies renamed attachments |
+| `run-all.sh` | Bash (Linux/macOS) | All-in-one: generates varied JSONs and copies renamed attachments |
+| `run-all.ps1` | PowerShell (Windows/macOS/Linux) | All-in-one: same as above, PowerShell version |
 | `json-vary.sh` | Bash (Linux/macOS) | Standalone JSON variation only (no attachment handling) |
 | `json-vary.ps1` | PowerShell | Standalone JSON variation only (PowerShell port of json-vary.sh) |
 
-## Quick Start (run-all.ps1)
+## Quick Start
+
+### Bash (run-all.sh)
+
+```bash
+./run-all.sh '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+```
+
+### PowerShell (run-all.ps1)
 
 ```powershell
 .\run-all.ps1 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
@@ -19,21 +28,32 @@ Utilities for generating varied JSON test submissions with matching renamed atta
 This will:
 1. Read each JSON template from `./templates/`
 2. Generate 7 varied copies per template (with all four values replaced by random values of the same pattern)
-3. Copy and rename attachments from `./attachments/projectTypeN/` for each generated submission reference
+3. Copy and rename attachments from `./attachments/<templateName>/` for each generated submission reference
 4. Write a master `manifest.csv` in the attachments output directory
 
 ### Parameters
 
-| Parameter | Alias | Default | Description |
-|-----------|-------|---------|-------------|
-| (positional) | | *required* | Literal strings to find and replace |
-| `-Variations` | `-n` | `7` | Number of varied JSON copies per template |
-| `-MaxAttachments` | `-m` | `0` (all) | Max attachments per submission (0 = use all available) |
-| `-TemplatesDir` | `-t` | `./templates` | Directory containing JSON template files |
-| `-AttachmentsDir` | `-a` | `./attachments` | Directory containing per-projectType source attachments |
-| `-Output` | `-o` | `./output` | Parent output directory |
+| Bash flag | PowerShell flag | Default | Description |
+|-----------|-----------------|---------|-------------|
+| (positional) | (positional) | *required* | Literal strings to find and replace |
+| `-n`, `--variations` | `-Variations` (`-n`) | `7` | Number of varied JSON copies per template |
+| `-m`, `--max-attachments` | `-MaxAttachments` (`-m`) | `0` (all) | Max attachments per submission (0 = use all available) |
+| `-t`, `--templates` | `-TemplatesDir` (`-t`) | `./templates` | Directory containing JSON template files |
+| `-a`, `--attachments` | `-AttachmentsDir` (`-a`) | `./attachments` | Directory containing per-template source attachments |
+| `-o`, `--output` | `-Output` (`-o`) | `./output` | Parent output directory |
 
 ### Examples
+
+```bash
+# Default: 7 variations, all attachments
+./run-all.sh '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+# 10 variations, max 3 attachments each
+./run-all.sh -n 10 -m 3 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+# Custom directories
+./run-all.sh -t ./my-templates -a ./my-attachments -o ./results '9237766545' 'T9Q0-IIIB-PP52'
+```
 
 ```powershell
 # Default: 7 variations, all attachments
@@ -50,17 +70,17 @@ This will:
 
 ```
 output/
-  projectType1/           # Varied JSONs from template 1
+  gForm-template-1/       # Varied JSONs from template 1
     DYKN-ISSR-MMPZ.json
     UTXN-JB5W-WOP9.json
     ...
-  projectType2/           # Varied JSONs from template 2
+  gForm-template-2/       # Varied JSONs from template 2
     A3MR-KQ4N-8PLJ.json
     ...
-  projectType3/           # Varied JSONs from template 3
+  gForm-template-3/       # Varied JSONs from template 3
     ...
   attachments/            # All renamed attachments (flat)
-    DYKNISSR MMPZ_1_API_Documentation.pdf
+    DYKNISSRMMPZ_1_API_Documentation.pdf
     DYKNISSRMMPZ_2_Sprint_Burndown.jpeg
     ...
     manifest.csv          # Master manifest (mail_item_id, attached_id, filename)
@@ -72,23 +92,24 @@ The script is **idempotent** -- it cleans the output directory before each run. 
 
 ```
 json-vary/
-  run-all.ps1             # Main script
+  run-all.sh              # Main script (Bash)
+  run-all.ps1             # Main script (PowerShell)
   templates/              # JSON templates (1 per project type)
     gForm-template-1.json
     gForm-template-2.json
     gForm-template-3.json
-  attachments/            # Source attachments (1 dir per project type)
-    projectType1/
+  attachments/            # Source attachments (1 dir per template)
+    gForm-template-1/
       ALLFORMAT123_1_API_Documentation.pdf
       ALLFORMAT123_2_Sprint_Burndown.jpeg
       ...
-    projectType2/
+    gForm-template-2/
       ...
-    projectType3/
+    gForm-template-3/
       ...
 ```
 
-Templates are matched to attachment directories by position: the first template (alphabetically) maps to `projectType1`, the second to `projectType2`, etc.
+Templates are matched to attachment directories by name: `templates/gForm-template-1.json` maps to `attachments/gForm-template-1/`.
 
 ## Pattern Detection
 

@@ -174,8 +174,10 @@ if ($Variations -lt 1) {
 }
 
 # Safety check: never delete the source attachments dir
-$resolvedOutput = (Resolve-Path -Path $Output -ErrorAction SilentlyContinue).Path ?? (Join-Path (Get-Location) $Output)
-$resolvedAttach = (Resolve-Path -Path $AttachmentsDir -ErrorAction SilentlyContinue).Path ?? (Join-Path (Get-Location) $AttachmentsDir)
+$rp = Resolve-Path -Path $Output -ErrorAction SilentlyContinue
+$resolvedOutput = if ($rp) { $rp.Path } else { Join-Path (Get-Location) $Output }
+$rp = Resolve-Path -Path $AttachmentsDir -ErrorAction SilentlyContinue
+$resolvedAttach = if ($rp) { $rp.Path } else { Join-Path (Get-Location) $AttachmentsDir }
 if ($resolvedOutput -eq $resolvedAttach) {
     Write-Error "Output directory cannot be the same as attachments directory"
     exit 1
