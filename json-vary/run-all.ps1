@@ -293,9 +293,10 @@ Write-Host ""
 $attachmentsOutDir = Join-Path $Output "attachments"
 New-Item -ItemType Directory -Path $attachmentsOutDir -Force | Out-Null
 
-# Write manifest header
-$manifestPath = Join-Path $attachmentsOutDir "manifest.csv"
-"mail_item_id,attached_id,filename" | Set-Content -Path $manifestPath -Encoding UTF8
+# Write manifest with empty first line, no header
+$manifestTimestamp = Get-Date -Format "ddMMyyHH"
+$manifestPath = Join-Path $attachmentsOutDir "manifest${manifestTimestamp}.csv"
+"" | Set-Content -Path $manifestPath -Encoding UTF8
 
 $totalCopied = 0
 foreach ($template in $templates) {

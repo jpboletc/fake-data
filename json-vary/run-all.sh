@@ -413,9 +413,10 @@ echo ""
 attachments_out_dir="$OUTPUT/attachments"
 mkdir -p "$attachments_out_dir"
 
-# Write manifest header
-manifest_path="$attachments_out_dir/manifest.csv"
-echo "mail_item_id,attached_id,filename" > "$manifest_path"
+# Write manifest with empty first line, no header
+manifest_timestamp=$(date +"%d%m%y%H")
+manifest_path="$attachments_out_dir/manifest${manifest_timestamp}.csv"
+echo "" > "$manifest_path"
 
 total_copied=0
 for template in "${TEMPLATES[@]}"; do
