@@ -8,6 +8,8 @@ Utilities for generating varied JSON test submissions with matching renamed atta
 |--------|----------|-------------|
 | `run-all.sh` | Bash (Linux/macOS) | All-in-one: generates varied JSONs and copies renamed attachments |
 | `run-all.ps1` | PowerShell (Windows/macOS/Linux) | All-in-one: same as above, PowerShell version |
+| `post-gforms.ps1` | PowerShell | POST generated gForm JSONs one-by-one to an endpoint |
+| `post-attachments.ps1` | PowerShell | POST all generated attachments in a single multipart request |
 | `json-vary.sh` | Bash (Linux/macOS) | Standalone JSON variation only (no attachment handling) |
 | `json-vary.ps1` | PowerShell | Standalone JSON variation only (PowerShell port of json-vary.sh) |
 
@@ -123,6 +125,63 @@ Values passed on the command line are auto-detected by format:
 | Anything else | `SUA tec04` | Random business name from built-in list |
 
 Replacements are applied longest-first to avoid substring collisions. Output JSON files are named after the generated submission reference (e.g., `DYKN-ISSR-MMPZ.json`). Attachment filenames use the same reference with hyphens removed (e.g., `DYKNISSRMMPZ_1_API_Documentation.pdf`).
+
+## Uploading to Endpoints
+
+After generating varied JSONs and attachments with `run-all`, use the upload scripts to POST them to your service endpoints. These scripts replicate the exact multipart/form-data request structure used by the browser (captured from Swagger UI / Chrome DevTools), including browser-like headers and Basic authentication.
+
+### post-gforms.ps1 -- POST gForm JSONs
+
+Iterates all `*.json` files under the given directory (recursively) and POSTs each individually as a multipart file upload.
+
+```powershell
+.\post-gforms.ps1 -Uri 'https://localhost:8080/api/source-files/upload-in-file' `
+    -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
+    -JsonDir './output'
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `-Uri` | Endpoint URL to POST each JSON file to |
+| `-AuthToken` | Full Basic auth string (e.g., `Basic XXXXX`) |
+| `-JsonDir` | Root directory containing JSON subdirectories (searched recursively) |
+| `-SkipCertCheck` | Skip SSL certificate validation (for localhost / self-signed certs) |
+
+Each file is sent as `multipart/form-data` with field name `file`. The script reports per-file success/failure with HTTP status codes and prints a summary at the end.
+
+### post-attachments.ps1 -- POST attachments
+
+Collects all non-CSV files from the attachments directory and sends them in a single multipart/form-data POST request.
+
+```powershell
+.\post-attachments.ps1 -Uri 'https://localhost:8080/api/cavr/attachments/s3files' `
+    -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
+    -AttachmentsDir './output/attachments'
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `-Uri` | Endpoint URL to POST attachments to |
+| `-AuthToken` | Full Basic auth string (e.g., `Basic XXXXX`) |
+| `-AttachmentsDir` | Directory containing attachment files to upload |
+| `-SkipCertCheck` | Skip SSL certificate validation (for localhost / self-signed certs) |
+
+All files are sent in one request, each as a separate part with field name `files`. Content-types are detected from file extensions (PDF, JPEG, XLSX, DOCX, PPTX, ODS, ODT, ODP, etc.). The script reads all files into memory, so be mindful of total attachment size vs. server upload limits.
+
+### Typical Workflow
+
+```powershell
+# 1. Generate varied JSONs and attachments
+.\run-all.ps1 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+# 2. POST gForm JSONs to the source-files endpoint
+.\post-gforms.ps1 -Uri 'https://myserver/api/source-files/upload-in-file' `
+    -AuthToken 'Basic dXNlcjpwYXNz' -JsonDir './output'
+
+# 3. POST attachments to the attachments endpoint
+.\post-attachments.ps1 -Uri 'https://myserver/api/cavr/attachments/s3files' `
+    -AuthToken 'Basic dXNlcjpwYXNz' -AttachmentsDir './output/attachments'
+```
 
 ## Standalone json-vary Scripts
 
