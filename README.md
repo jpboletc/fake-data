@@ -173,6 +173,10 @@ w41ohrzh96f7r86b,0mfs7vg26m4wq4fu,QY76OVC07S34_3_Financial_Procedures.docx
 - `attached_id`: 16-character random alphanumeric identifier
 - `filename`: Full filename with submission reference prefix
 
+## JSON Vary Utility
+
+The [`json-vary/`](json-vary/) directory contains a standalone bash script for generating multiple copies of a JSON file with randomised field values. Useful for creating varied test payloads from a single template. See [json-vary/README.md](json-vary/README.md) for details.
+
 ## Technology Stack
 
 - **Language**: Java 21
