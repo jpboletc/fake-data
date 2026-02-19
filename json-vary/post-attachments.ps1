@@ -56,6 +56,7 @@ public class TrustAll : ICertificatePolicy {
 # Content-type mapping
 $contentTypes = @{
     ".pdf"  = "application/pdf"
+    ".csv"  = "text/csv"
     ".json" = "application/json"
     ".jpeg" = "image/jpeg"
     ".jpg"  = "image/jpeg"
@@ -82,8 +83,8 @@ if (-not (Test-Path $AttachmentsDir)) {
     exit 1
 }
 
-# Collect non-CSV files
-$files = Get-ChildItem -Path $AttachmentsDir -File | Where-Object { $_.Extension -ne ".csv" } | Sort-Object Name
+# Collect all files including manifest CSV
+$files = Get-ChildItem -Path $AttachmentsDir -File | Sort-Object Name
 
 if ($files.Count -eq 0) {
     Write-Error "No attachment files found in: $AttachmentsDir"
