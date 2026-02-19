@@ -321,8 +321,7 @@ foreach ($template in $templates) {
 Write-Host "--- Phase 2: Copying attachments ---"
 Write-Host ""
 
-$attachmentsOutDir = Join-Path $Output "attachments"
-New-Item -ItemType Directory -Path $attachmentsOutDir -Force | Out-Null
+$attachmentsOutDir = (New-Item -ItemType Directory -Path (Join-Path $Output "attachments") -Force).FullName
 
 # Create manifest file(s) with empty first line, no header
 # Use UTF-8 without BOM (PS 5.1's -Encoding UTF8 adds a BOM which breaks Java CSV parsing)
