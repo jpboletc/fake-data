@@ -325,13 +325,15 @@ $attachmentsOutDir = Join-Path $Output "attachments"
 New-Item -ItemType Directory -Path $attachmentsOutDir -Force | Out-Null
 
 # Create manifest file(s) with empty first line, no header
+# Use UTF-8 without BOM (PS 5.1's -Encoding UTF8 adds a BOM which breaks Java CSV parsing)
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $baseDate = Get-Date
 $manifestPaths = @()
 for ($mi = 0; $mi -lt $Manifests; $mi++) {
     $ts = $baseDate.Date.AddHours($StartHour + $mi)
     $stamp = $ts.ToString("ddMMyyHH")
     $path = Join-Path $attachmentsOutDir "manifest${stamp}.csv"
-    "" | Set-Content -Path $path -Encoding UTF8
+    [System.IO.File]::WriteAllText($path, "`r`n", $utf8NoBom)
     $manifestPaths += $path
 }
 
@@ -392,7 +394,7 @@ foreach ($template in $templates) {
             $mailItemId = New-ManifestId
             $attachedId = New-ManifestId
             $chosenManifest = $manifestPaths[$Rng.Next(0, $manifestPaths.Count)]
-            "${mailItemId},${attachedId},${newName}" | Add-Content -Path $chosenManifest -Encoding UTF8
+            [System.IO.File]::AppendAllText($chosenManifest, "${mailItemId},${attachedId},${newName}`r`n", $utf8NoBom)
 
             $totalCopied++
         }
