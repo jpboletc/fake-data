@@ -31,7 +31,7 @@ This will:
 1. Read each JSON template from `./templates/`
 2. Generate 7 varied copies per template (with all four values replaced by random values of the same pattern)
 3. Copy and rename attachments from `./attachments/<templateName>/` for each generated submission reference
-4. Write a master `manifest.csv` in the attachments output directory
+4. Write timestamped manifest CSV(s) in the attachments output directory (use `--manifests N` to split across multiple files)
 
 ### Parameters
 
@@ -43,6 +43,8 @@ This will:
 | `-t`, `--templates` | `-TemplatesDir` (`-t`) | `./templates` | Directory containing JSON template files |
 | `-a`, `--attachments` | `-AttachmentsDir` (`-a`) | `./attachments` | Directory containing per-template source attachments |
 | `-o`, `--output` | `-Output` (`-o`) | `./output` | Parent output directory |
+| `--manifests` | `-Manifests` | `1` | Number of manifest files to create |
+| `-H`, `--start-hour` | `-StartHour` (`-H`) | current hour | Starting hour (0-23) for manifest timestamps |
 
 ### Examples
 
@@ -55,6 +57,9 @@ This will:
 
 # Custom directories
 ./run-all.sh -t ./my-templates -a ./my-attachments -o ./results '9237766545' 'T9Q0-IIIB-PP52'
+
+# 3 manifest files starting at hour 15 (manifest*15.csv, *16.csv, *17.csv)
+./run-all.sh --manifests 3 -H 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 ```
 
 ```powershell
@@ -66,6 +71,9 @@ This will:
 
 # Custom directories
 .\run-all.ps1 -TemplatesDir ./my-templates -AttachmentsDir ./my-attachments -Output ./results '9237766545' 'T9Q0-IIIB-PP52'
+
+# 3 manifest files starting at hour 15
+.\run-all.ps1 -Manifests 3 -StartHour 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 ```
 
 ### Output Structure
@@ -85,7 +93,7 @@ output/
     DYKNISSRMMPZ_1_API_Documentation.pdf
     DYKNISSRMMPZ_2_Sprint_Burndown.jpeg
     ...
-    manifest.csv          # Master manifest (mail_item_id, attached_id, filename)
+    manifest19022615.csv  # Manifest(s) - timestamped (mail_item_id, attached_id, filename)
 ```
 
 The script is **idempotent** -- it cleans the output directory before each run. Source templates and attachments are never modified.

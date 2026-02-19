@@ -35,11 +35,22 @@
 .PARAMETER Output
     Parent output directory (default: ./output).
 
+.PARAMETER StartHour
+    Starting hour (0-23) for manifest timestamps (default: current hour).
+
+.PARAMETER Manifests
+    Number of manifest files to create (default: 1).
+    Attachments are randomly distributed across manifests.
+    Hours increment from StartHour; dates advance on midnight rollover.
+
 .EXAMPLE
     .\run-all.ps1 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 
 .EXAMPLE
     .\run-all.ps1 -Variations 10 -MaxAttachments 3 -Output ./results '9237766545' 'T9Q0-IIIB-PP52'
+
+.EXAMPLE
+    .\run-all.ps1 -Manifests 3 -StartHour 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 #>
 
 [CmdletBinding(PositionalBinding=$false)]
@@ -60,7 +71,12 @@ param(
     [int]$MaxAttachments = 0,
 
     [Alias("o")]
-    [string]$Output = "./output"
+    [string]$Output = "./output",
+
+    [Alias("H")]
+    [int]$StartHour = -1,
+
+    [int]$Manifests = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -183,6 +199,18 @@ if ($resolvedOutput -eq $resolvedAttach) {
     exit 1
 }
 
+if ($Manifests -lt 1) {
+    Write-Error "Manifests must be a positive integer, got: $Manifests"
+    exit 1
+}
+
+if ($StartHour -eq -1) {
+    $StartHour = (Get-Date).Hour
+} elseif ($StartHour -lt 0 -or $StartHour -gt 23) {
+    Write-Error "StartHour must be 0-23, got: $StartHour"
+    exit 1
+}
+
 # ============================================================
 # Prepare replacement values
 # ============================================================
@@ -211,6 +239,9 @@ if ($MaxAttachments -gt 0) {
     Write-Host "Max attachments: all available"
 }
 Write-Host "Output:          $Output"
+if ($Manifests -gt 1) {
+    Write-Host "Manifests:       $Manifests (starting at hour $('{0:D2}' -f $StartHour))"
+}
 Write-Host ""
 Write-Host "Values to replace:"
 for ($i = 0; $i -lt $Values.Count; $i++) {
@@ -293,10 +324,16 @@ Write-Host ""
 $attachmentsOutDir = Join-Path $Output "attachments"
 New-Item -ItemType Directory -Path $attachmentsOutDir -Force | Out-Null
 
-# Write manifest with empty first line, no header
-$manifestTimestamp = Get-Date -Format "ddMMyyHH"
-$manifestPath = Join-Path $attachmentsOutDir "manifest${manifestTimestamp}.csv"
-"" | Set-Content -Path $manifestPath -Encoding UTF8
+# Create manifest file(s) with empty first line, no header
+$baseDate = Get-Date
+$manifestPaths = @()
+for ($mi = 0; $mi -lt $Manifests; $mi++) {
+    $ts = $baseDate.Date.AddHours($StartHour + $mi)
+    $stamp = $ts.ToString("ddMMyyHH")
+    $path = Join-Path $attachmentsOutDir "manifest${stamp}.csv"
+    "" | Set-Content -Path $path -Encoding UTF8
+    $manifestPaths += $path
+}
 
 $totalCopied = 0
 foreach ($template in $templates) {
@@ -354,7 +391,8 @@ foreach ($template in $templates) {
 
             $mailItemId = New-ManifestId
             $attachedId = New-ManifestId
-            "${mailItemId},${attachedId},${newName}" | Add-Content -Path $manifestPath -Encoding UTF8
+            $chosenManifest = $manifestPaths[$Rng.Next(0, $manifestPaths.Count)]
+            "${mailItemId},${attachedId},${newName}" | Add-Content -Path $chosenManifest -Encoding UTF8
 
             $totalCopied++
         }
@@ -369,7 +407,14 @@ foreach ($template in $templates) {
 # ============================================================
 
 Write-Host "Attachments: $attachmentsOutDir/"
-Write-Host "Manifest:    $manifestPath"
+if ($manifestPaths.Count -eq 1) {
+    Write-Host "Manifest:    $($manifestPaths[0])"
+} else {
+    Write-Host "Manifests:   $($manifestPaths.Count) files"
+    foreach ($mp in $manifestPaths) {
+        Write-Host "             $(Split-Path $mp -Leaf)"
+    }
+}
 Write-Host "Total files: $totalCopied attachments"
 Write-Host ""
 Write-Host "All done. $($templates.Count) templates x $Variations variations = $($templates.Count * $Variations) submissions."

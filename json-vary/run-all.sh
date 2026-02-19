@@ -24,6 +24,8 @@
 #   -t, --templates <dir>     Templates directory (default: ./templates)
 #   -a, --attachments <dir>   Source attachments directory (default: ./attachments)
 #   -o, --output <dir>        Output directory (default: ./output)
+#   --manifests N             Number of manifest files (default: 1)
+#   -H, --start-hour HH      Starting hour 0-23 for manifests (default: current hour)
 #   -h, --help                Show this help
 #
 # Examples:
@@ -41,6 +43,8 @@ ATTACHMENTS_DIR="./attachments"
 VARIATIONS=7
 MAX_ATTACHMENTS=0
 OUTPUT="./output"
+MANIFESTS=1
+START_HOUR=-1
 
 # ============================================================
 # Business name list
@@ -185,6 +189,8 @@ Options:
   -t, --templates <dir>     Templates directory (default: ./templates)
   -a, --attachments <dir>   Source attachments directory (default: ./attachments)
   -o, --output <dir>        Output directory (default: ./output)
+  --manifests N             Number of manifest files (default: 1)
+  -H, --start-hour HH      Starting hour 0-23 for manifests (default: current hour)
   -h, --help                Show this help
 
 Pattern detection (automatic from value format):
@@ -196,6 +202,7 @@ Pattern detection (automatic from value format):
 Examples:
   ./run-all.sh '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
   ./run-all.sh -n 10 -m 3 -o ./results '9237766545' 'T9Q0-IIIB-PP52'
+  ./run-all.sh --manifests 3 -H 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74...' 'SUA tec04'
 HELP
 }
 
@@ -228,6 +235,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     -o|--output)
       OUTPUT="$2"
+      shift 2
+      ;;
+    --manifests)
+      MANIFESTS="$2"
+      shift 2
+      ;;
+    -H|--start-hour)
+      START_HOUR="$2"
       shift 2
       ;;
     -*)
@@ -282,6 +297,20 @@ if [ "$resolved_output" = "$resolved_attach" ]; then
   exit 1
 fi
 
+if ! [[ "$MANIFESTS" =~ ^[0-9]+$ ]] || [ "$MANIFESTS" -lt 1 ]; then
+  echo "Error: Manifests must be a positive integer, got: $MANIFESTS" >&2
+  exit 1
+fi
+
+if [ "$START_HOUR" -eq -1 ]; then
+  START_HOUR=$(date +"%H")
+  # Strip leading zero for arithmetic
+  START_HOUR=$((10#$START_HOUR))
+elif [ "$START_HOUR" -lt 0 ] || [ "$START_HOUR" -gt 23 ]; then
+  echo "Error: Start hour must be 0-23, got: $START_HOUR" >&2
+  exit 1
+fi
+
 # ============================================================
 # Prepare: detect submission ref index, sort by length
 # ============================================================
@@ -325,6 +354,9 @@ else
   echo "Max attachments: all available"
 fi
 echo "Output:          $OUTPUT"
+if [ "$MANIFESTS" -gt 1 ]; then
+  echo "Manifests:       $MANIFESTS (starting at hour $(printf '%02d' $START_HOUR))"
+fi
 echo ""
 echo "Values to replace:"
 for ((i=0; i<${#VALUES[@]}; i++)); do
@@ -413,10 +445,26 @@ echo ""
 attachments_out_dir="$OUTPUT/attachments"
 mkdir -p "$attachments_out_dir"
 
-# Write manifest with empty first line, no header
-manifest_timestamp=$(date +"%d%m%y%H")
-manifest_path="$attachments_out_dir/manifest${manifest_timestamp}.csv"
-echo "" > "$manifest_path"
+# Create manifest file(s) with empty first line, no header
+# Use epoch-seconds arithmetic for portable midnight rollover
+if date -r 0 +%s >/dev/null 2>&1; then
+  # macOS/BSD: date -j -f to parse, date -r to format from epoch
+  base_epoch=$(date -j -f "%Y%m%d%H%M%S" "$(date +%Y%m%d)$(printf '%02d' $START_HOUR)0000" "+%s")
+  date_from_epoch() { date -r "$1" +"$2"; }
+else
+  # GNU/Linux: date -d to parse, date -d @epoch to format
+  base_epoch=$(date -d "$(date +%Y-%m-%d) $(printf '%02d' $START_HOUR):00:00" "+%s")
+  date_from_epoch() { date -d "@$1" +"$2"; }
+fi
+
+MANIFEST_PATHS=()
+for ((mi=0; mi<MANIFESTS; mi++)); do
+  epoch=$((base_epoch + mi * 3600))
+  stamp=$(date_from_epoch "$epoch" "%d%m%y%H")
+  path="$attachments_out_dir/manifest${stamp}.csv"
+  echo "" > "$path"
+  MANIFEST_PATHS+=("$path")
+done
 
 total_copied=0
 for template in "${TEMPLATES[@]}"; do
@@ -480,7 +528,8 @@ for template in "${TEMPLATES[@]}"; do
 
       mail_item_id=$(gen_manifest_id)
       attached_id=$(gen_manifest_id)
-      echo "${mail_item_id},${attached_id},${new_name}" >> "$manifest_path"
+      manifest_idx=$(( $(od -An -tu2 -N2 /dev/urandom | tr -d ' ') % MANIFESTS ))
+      echo "${mail_item_id},${attached_id},${new_name}" >> "${MANIFEST_PATHS[$manifest_idx]}"
 
       total_copied=$((total_copied + 1))
     done
@@ -495,7 +544,14 @@ done
 # ============================================================
 
 echo "Attachments: $attachments_out_dir/"
-echo "Manifest:    $manifest_path"
+if [ ${#MANIFEST_PATHS[@]} -eq 1 ]; then
+  echo "Manifest:    ${MANIFEST_PATHS[0]}"
+else
+  echo "Manifests:   ${#MANIFEST_PATHS[@]} files"
+  for mp in "${MANIFEST_PATHS[@]}"; do
+    echo "             $(basename "$mp")"
+  done
+fi
 echo "Total files: $total_copied attachments"
 echo ""
 echo "All done. ${#TEMPLATES[@]} templates x $VARIATIONS variations = $(( ${#TEMPLATES[@]} * VARIATIONS )) submissions."
