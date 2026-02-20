@@ -87,15 +87,44 @@ $ErrorActionPreference = "Stop"
 
 $Rng = [System.Random]::new()
 
-$BusinessNames = @(
-    "Apex Holdings",  "Nova Digital",    "Vertex Group",    "Pinnacle Corp"
-    "Summit Labs",    "Forge Systems",   "Atlas Partners",  "Beacon Works"
-    "Crest Industries","Delta Ventures", "Echo Solutions",  "Falcon Tech"
-    "Granite Ltd",    "Harbour Co",      "Ionic Media",     "Jade Consulting"
-    "Keystone Ltd",   "Lumen Group",     "Mosaic Corp",     "Nexus Holdings"
-    "Orbit Systems",  "Prism Digital",   "Quartz Labs",     "Ridgeline Co"
-    "Stellar Works",  "Trident Corp",    "Unity Partners",  "Vanguard Ltd"
-    "Wren Industries","Zenith Group"
+# Company name word lists (100 each) - combined to generate thousands of unique names
+$NameAdjectives = @(
+    "Blue",       "Golden",     "Silver",     "Pacific",    "Northern",   "Southern",   "Atlantic",   "Alpine",     "Coastal",    "Sterling"
+    "Amber",      "Crimson",    "Emerald",    "Sapphire",   "Cedar",      "Maple",      "Iron",       "Copper",     "Granite",    "Crystal"
+    "Coral",      "Arctic",     "Solar",      "Lunar",      "Stellar",    "Cascade",    "Pinnacle",   "Meridian",   "Horizon",    "Frontier"
+    "Heritage",   "Legacy",     "Pioneer",    "Eagle",      "Falcon",     "Phoenix",    "Sentinel",   "Titan",      "Aurora",     "Nova"
+    "Quantum",    "Vertex",     "Prism",      "Fusion",     "Catalyst",   "Beacon",     "Compass",    "Anchor",     "Keystone",   "Landmark"
+    "Swift",      "Agile",      "Dynamic",    "Elite",      "Noble",      "Bright",     "Vital",      "Allied",     "United",     "Metro"
+    "Continental","Premier",    "Prime",      "Royal",      "Grand",      "Summit",     "Crest",      "Aspen",      "Birch",      "Elm"
+    "Oak",        "Pine",       "Sage",       "Flint",      "Onyx",       "Cobalt",     "Scarlet",    "Indigo",     "Azure",      "Polaris"
+    "Orion",      "Triton",     "Vega",       "Zenith",     "Apex",       "Evergreen",  "Redwood",    "Sequoia",    "Sierra",     "Boreal"
+    "Tidal",      "Radiant",    "Integral",   "Resolute",   "Sovereign",  "Astra",      "Trident",    "Central",    "Civic",      "Global"
+)
+
+$NameNouns = @(
+    "Ridge",      "Harbor",     "Creek",      "Valley",     "Stone",      "Field",      "Grove",      "Bridge",     "Gate",       "Tower"
+    "Park",       "Bay",        "Cove",       "Hill",       "Glen",       "Brook",      "Forge",      "River",      "Cliff",      "Point"
+    "Landing",    "Crossing",   "Dale",       "Haven",      "Shore",      "Rock",       "Peak",       "Canyon",     "Mesa",       "Trail"
+    "Vista",      "Hollow",     "Ledge",      "Basin",      "Arch",       "Pier",       "Coast",      "Port",       "Inlet",      "Cape"
+    "Terrace",    "Knoll",      "Spur",       "Bend",       "Crown",      "Shield",     "Spire",      "Spring",     "Lake",       "Marsh"
+    "Bluff",      "Prairie",    "Glade",      "Dune",       "Range",      "Channel",    "Strand",     "Reef",       "Oasis",      "Plateau"
+    "Heath",      "Moor",       "Dell",       "Trace",      "Edge",       "Bond",       "Line",       "Core",       "Link",       "Nexus"
+    "Pulse",      "Spark",      "Wave",       "Tide",       "Axis",       "Orbit",      "Lens",       "Venture",    "Capital",    "Croft"
+    "Wells",      "Gardens",    "Meadow",     "Commons",    "Quarter",    "Circuit",    "Loop",       "Reach",      "Pass",       "Strait"
+    "Pointe",     "Pines",      "Sands",      "Springs",    "Heights",    "Narrows",    "Rapids",     "Falls",      "Harbour",    "Wharf"
+)
+
+$NameSuffixes = @(
+    "Holdings",   "Group",      "Partners",   "Corp",       "Industries", "Solutions",  "Systems",    "Technologies","Dynamics",   "Ventures"
+    "Capital",    "Consulting", "Enterprises","Associates", "Services",   "Analytics",  "Advisors",   "Global",     "International","Networks"
+    "Digital",    "Labs",       "Works",      "Co",         "Ltd",        "Inc",        "Media",      "Energy",     "Logistics",  "Supply"
+    "Direct",     "Alliance",   "Collective", "Foundation", "Institute",  "Agency",     "Trust",      "Fund",       "Exchange",   "Trade"
+    "Commerce",   "Properties", "Development","Design",     "Creative",   "Studio",     "Research",   "Resources",  "Materials",  "Products"
+    "Financial",  "Health",     "Scientific", "Engineering","Manufacturing","Biotech",  "Software",   "Intelligence","Security",  "Communications"
+    "Aerospace",  "Marine",     "Automotive", "Pharma",     "Medical",    "Electronics","Robotics",   "Strategies", "Advisory",   "Management"
+    "Freight",    "Transport",  "Aviation",   "Defence",    "Power",      "Mining",     "Agriculture","Construction","Realty",     "Telecom"
+    "Wireless",   "Cloud",      "Data",       "Hardware",   "Textiles",   "Metals",     "Minerals",   "Nutrition",  "Foods",      "Chemicals"
+    "Optics",     "Devices",    "Components", "Instruments","Brands",     "Concepts",   "Express",    "Connect",    "Source",     "Platform"
 )
 
 function New-RandomDigits([int]$Length) {
@@ -129,7 +158,15 @@ function New-RandomSubmissionRef([string]$Original) {
 }
 
 function New-RandomBusinessName {
-    return $BusinessNames[$Rng.Next(0, $BusinessNames.Count)]
+    $adj = $NameAdjectives[$Rng.Next(0, $NameAdjectives.Count)]
+    $noun = $NameNouns[$Rng.Next(0, $NameNouns.Count)]
+    $suffix = $NameSuffixes[$Rng.Next(0, $NameSuffixes.Count)]
+    $pattern = $Rng.Next(0, 5)
+    switch ($pattern) {
+        { $_ -le 2 } { return "$adj $noun $suffix" }   # 60%: Pacific Ridge Holdings
+        3             { return "$noun $suffix" }          # 20%: Meridian Corp
+        4             { return "$adj $suffix" }           # 20%: Sterling Partners
+    }
 }
 
 function New-ManifestId {

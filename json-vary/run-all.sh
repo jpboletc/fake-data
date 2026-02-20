@@ -50,15 +50,44 @@ START_HOUR=-1
 # Business name list
 # ============================================================
 
-BUSINESS_NAMES=(
-  "Apex Holdings"    "Nova Digital"     "Vertex Group"     "Pinnacle Corp"
-  "Summit Labs"      "Forge Systems"    "Atlas Partners"   "Beacon Works"
-  "Crest Industries" "Delta Ventures"   "Echo Solutions"   "Falcon Tech"
-  "Granite Ltd"      "Harbour Co"       "Ionic Media"      "Jade Consulting"
-  "Keystone Ltd"     "Lumen Group"      "Mosaic Corp"      "Nexus Holdings"
-  "Orbit Systems"    "Prism Digital"    "Quartz Labs"      "Ridgeline Co"
-  "Stellar Works"    "Trident Corp"     "Unity Partners"   "Vanguard Ltd"
-  "Wren Industries"  "Zenith Group"
+# Company name word lists (100 each) - combined to generate thousands of unique names
+NAME_ADJECTIVES=(
+  Blue       Golden     Silver     Pacific    Northern   Southern   Atlantic   Alpine     Coastal    Sterling
+  Amber      Crimson    Emerald    Sapphire   Cedar      Maple      Iron       Copper     Granite    Crystal
+  Coral      Arctic     Solar      Lunar      Stellar    Cascade    Pinnacle   Meridian   Horizon    Frontier
+  Heritage   Legacy     Pioneer    Eagle      Falcon     Phoenix    Sentinel   Titan      Aurora     Nova
+  Quantum    Vertex     Prism      Fusion     Catalyst   Beacon     Compass    Anchor     Keystone   Landmark
+  Swift      Agile      Dynamic    Elite      Noble      Bright     Vital      Allied     United     Metro
+  Continental Premier   Prime      Royal      Grand      Summit     Crest      Aspen      Birch      Elm
+  Oak        Pine       Sage       Flint      Onyx       Cobalt     Scarlet    Indigo     Azure      Polaris
+  Orion      Triton     Vega       Zenith     Apex       Evergreen  Redwood    Sequoia    Sierra     Boreal
+  Tidal      Radiant    Integral   Resolute   Sovereign  Astra      Trident    Central    Civic      Global
+)
+
+NAME_NOUNS=(
+  Ridge      Harbor     Creek      Valley     Stone      Field      Grove      Bridge     Gate       Tower
+  Park       Bay        Cove       Hill       Glen       Brook      Forge      River      Cliff      Point
+  Landing    Crossing   Dale       Haven      Shore      Rock       Peak       Canyon     Mesa       Trail
+  Vista      Hollow     Ledge      Basin      Arch       Pier       Coast      Port       Inlet      Cape
+  Terrace    Knoll      Spur       Bend       Crown      Shield     Spire      Spring     Lake       Marsh
+  Bluff      Prairie    Glade      Dune       Range      Channel    Strand     Reef       Oasis      Plateau
+  Heath      Moor       Dell       Trace      Edge       Bond       Line       Core       Link       Nexus
+  Pulse      Spark      Wave       Tide       Axis       Orbit      Lens       Venture    Capital    Croft
+  Wells      Gardens    Meadow     Commons    Quarter    Circuit    Loop       Reach      Pass       Strait
+  Pointe     Pines      Sands      Springs    Heights    Narrows    Rapids     Falls      Harbour    Wharf
+)
+
+NAME_SUFFIXES=(
+  Holdings   Group      Partners   Corp       Industries Solutions  Systems    Technologies Dynamics  Ventures
+  Capital    Consulting Enterprises Associates Services  Analytics  Advisors   Global     International Networks
+  Digital    Labs       Works      Co         Ltd        Inc        Media      Energy     Logistics  Supply
+  Direct     Alliance   Collective Foundation Institute  Agency     Trust      Fund       Exchange   Trade
+  Commerce   Properties Development Design    Creative   Studio     Research   Resources  Materials  Products
+  Financial  Health     Scientific Engineering Manufacturing Biotech Software  Intelligence Security Communications
+  Aerospace  Marine     Automotive Pharma     Medical    Electronics Robotics  Strategies Advisory   Management
+  Freight    Transport  Aviation   Defence    Power      Mining     Agriculture Construction Realty   Telecom
+  Wireless   Cloud      Data       Hardware   Textiles   Metals     Minerals   Nutrition  Foods      Chemicals
+  Optics     Devices    Components Instruments Brands    Concepts   Express    Connect    Source     Platform
 )
 
 # ============================================================
@@ -114,10 +143,18 @@ gen_submission_ref() {
 }
 
 gen_business_name() {
-  local idx
-  idx=$(od -An -tu2 -N2 /dev/urandom | tr -d ' ')
-  idx=$((idx % ${#BUSINESS_NAMES[@]}))
-  echo "${BUSINESS_NAMES[$idx]}"
+  local adj_idx noun_idx suffix_idx pattern
+  adj_idx=$(( $(od -An -tu2 -N2 /dev/urandom | tr -d ' ') % ${#NAME_ADJECTIVES[@]} ))
+  noun_idx=$(( $(od -An -tu2 -N2 /dev/urandom | tr -d ' ') % ${#NAME_NOUNS[@]} ))
+  suffix_idx=$(( $(od -An -tu2 -N2 /dev/urandom | tr -d ' ') % ${#NAME_SUFFIXES[@]} ))
+  pattern=$(( $(od -An -tu1 -N1 /dev/urandom | tr -d ' ') % 5 ))
+  if [ "$pattern" -le 2 ]; then
+    echo "${NAME_ADJECTIVES[$adj_idx]} ${NAME_NOUNS[$noun_idx]} ${NAME_SUFFIXES[$suffix_idx]}"
+  elif [ "$pattern" -eq 3 ]; then
+    echo "${NAME_NOUNS[$noun_idx]} ${NAME_SUFFIXES[$suffix_idx]}"
+  else
+    echo "${NAME_ADJECTIVES[$adj_idx]} ${NAME_SUFFIXES[$suffix_idx]}"
+  fi
 }
 
 gen_manifest_id() {
