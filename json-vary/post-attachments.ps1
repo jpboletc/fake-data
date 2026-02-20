@@ -1,10 +1,12 @@
 <#
 .SYNOPSIS
-    POST all attachment files in a single multipart request.
+    POST attachment files in batched multipart requests.
 
 .DESCRIPTION
-    Collects all non-CSV files from the attachments directory and sends them
-    in one multipart/form-data POST request, each as a 'files' field.
+    Collects all files from the attachments directory and sends them in
+    batched multipart/form-data POST requests. Manifest CSV files are always
+    included in the final batch so that they arrive after the files they
+    reference.
 
 .PARAMETER Uri
     The endpoint URL to POST to.
@@ -15,6 +17,9 @@
 .PARAMETER AttachmentsDir
     Directory containing attachment files to upload.
 
+.PARAMETER BatchSize
+    Maximum number of files per POST request (default 40).
+
 .PARAMETER SkipCertCheck
     Skip SSL certificate validation (for localhost / self-signed certs).
 
@@ -22,6 +27,12 @@
     .\post-attachments.ps1 -Uri 'https://localhost:8080/api/cavr/attachments/s3files' `
         -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
         -AttachmentsDir './output/attachments'
+
+.EXAMPLE
+    .\post-attachments.ps1 -Uri 'https://localhost:8080/api/cavr/attachments/s3files' `
+        -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
+        -AttachmentsDir './output/attachments' `
+        -BatchSize 20
 #>
 
 [CmdletBinding()]
@@ -34,6 +45,8 @@ param(
 
     [Parameter(Mandatory=$true)]
     [string]$AttachmentsDir,
+
+    [int]$BatchSize = 40,
 
     [switch]$SkipCertCheck
 )
@@ -83,66 +96,53 @@ if (-not (Test-Path $AttachmentsDir)) {
     exit 1
 }
 
-# Collect all files including manifest CSV
-$files = Get-ChildItem -Path $AttachmentsDir -File | Sort-Object Name
+# Validate batch size
+if ($BatchSize -lt 1) {
+    Write-Error "BatchSize must be a positive integer, got: $BatchSize"
+    exit 1
+}
 
-if ($files.Count -eq 0) {
+# Collect files, separating manifests from attachments
+$allFiles = Get-ChildItem -Path $AttachmentsDir -File | Sort-Object Name
+$manifestFiles = @($allFiles | Where-Object { $_.Name -match '^manifest.*\.csv$' })
+$attachmentFiles = @($allFiles | Where-Object { $_.Name -notmatch '^manifest.*\.csv$' })
+
+if ($allFiles.Count -eq 0) {
     Write-Error "No attachment files found in: $AttachmentsDir"
     exit 1
 }
 
-$totalSize = ($files | Measure-Object -Property Length -Sum).Sum
+$totalSize = ($allFiles | Measure-Object -Property Length -Sum).Sum
 $totalSizeMB = [math]::Round($totalSize / 1MB, 2)
 
 Write-Host "Endpoint:    $Uri"
 Write-Host "Attachments: $AttachmentsDir"
-Write-Host "Files:       $($files.Count) ($totalSizeMB MB)"
+Write-Host "Files:       $($allFiles.Count) ($totalSizeMB MB)"
+Write-Host "  Attachments: $($attachmentFiles.Count)"
+Write-Host "  Manifests:   $($manifestFiles.Count) (sent in final batch)"
+Write-Host "Batch size:  $BatchSize"
 Write-Host ""
 
-# Build multipart body with all files
-$boundary = "----WebKitFormBoundary" + [guid]::NewGuid().ToString("N").Substring(0, 16)
-$crlf = "$([char]13)$([char]10)"
-
-# Use a MemoryStream to handle binary file content
-$ms = New-Object System.IO.MemoryStream
-$encoding = [System.Text.Encoding]::UTF8
-
-foreach ($file in $files) {
-    $filename = $file.Name
-    $ext = $file.Extension.ToLower()
-    $ct = if ($contentTypes.ContainsKey($ext)) { $contentTypes[$ext] } else { "application/octet-stream" }
-
-    # Write part header
-    $partHeader = "--${boundary}${crlf}" +
-        "Content-Disposition: form-data; name=`"files`"; filename=`"${filename}`"${crlf}" +
-        "Content-Type: ${ct}${crlf}" +
-        "${crlf}"
-
-    $headerBytes = $encoding.GetBytes($partHeader)
-    $ms.Write($headerBytes, 0, $headerBytes.Length)
-
-    # Write file content as raw bytes
-    $fileBytes = [System.IO.File]::ReadAllBytes($file.FullName)
-    $ms.Write($fileBytes, 0, $fileBytes.Length)
-
-    # Write CRLF after file content
-    $crlfBytes = $encoding.GetBytes($crlf)
-    $ms.Write($crlfBytes, 0, $crlfBytes.Length)
-
-    Write-Host "  Added: $filename ($ct, $([math]::Round($file.Length / 1KB, 1)) KB)"
+# Build batches: attachment files in groups of BatchSize, manifests appended to the last batch
+$batches = @()
+for ($i = 0; $i -lt $attachmentFiles.Count; $i += $BatchSize) {
+    $end = [math]::Min($i + $BatchSize, $attachmentFiles.Count)
+    $batch = @($attachmentFiles[$i..($end - 1)])
+    $batches += ,@($batch)
 }
 
-# Write closing boundary
-$closingBytes = $encoding.GetBytes("--${boundary}--${crlf}")
-$ms.Write($closingBytes, 0, $closingBytes.Length)
+# Append manifests to the final batch (or create a manifest-only batch)
+if ($batches.Count -eq 0) {
+    $batches += ,@($manifestFiles)
+} else {
+    $batches[$batches.Count - 1] = @($batches[$batches.Count - 1]) + @($manifestFiles)
+}
 
-$bodyBytes = $ms.ToArray()
-$ms.Dispose()
-
+$totalBatches = $batches.Count
+Write-Host "Batches:     $totalBatches"
 Write-Host ""
-Write-Host "Total body size: $([math]::Round($bodyBytes.Length / 1MB, 2)) MB"
-Write-Host "Sending POST..."
 
+# Set up session and headers (reused across batches)
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0"
 
@@ -166,34 +166,82 @@ $headers = @{
     "sec-fetch-site"  = "same-origin"
 }
 
-try {
-    $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri `
-        -Method "POST" `
-        -WebSession $session `
-        -Headers $headers `
-        -ContentType "multipart/form-data; boundary=${boundary}" `
-        -Body $bodyBytes
+$crlf = "$([char]13)$([char]10)"
+$encoding = [System.Text.Encoding]::UTF8
+$uploadedCount = 0
 
-    $statusCode = $response.StatusCode
-    $responseSnippet = $response.Content
-    if ($responseSnippet.Length -gt 500) {
-        $responseSnippet = $responseSnippet.Substring(0, 500) + "..."
+for ($b = 0; $b -lt $totalBatches; $b++) {
+    $batchFiles = $batches[$b]
+    $batchNum = $b + 1
+
+    Write-Host "--- Batch $batchNum / $totalBatches ($($batchFiles.Count) files) ---"
+
+    # Build multipart body for this batch
+    $boundary = "----WebKitFormBoundary" + [guid]::NewGuid().ToString("N").Substring(0, 16)
+    $ms = New-Object System.IO.MemoryStream
+
+    foreach ($file in $batchFiles) {
+        $filename = $file.Name
+        $ext = $file.Extension.ToLower()
+        $ct = if ($contentTypes.ContainsKey($ext)) { $contentTypes[$ext] } else { "application/octet-stream" }
+
+        $partHeader = "--${boundary}${crlf}" +
+            "Content-Disposition: form-data; name=`"files`"; filename=`"${filename}`"${crlf}" +
+            "Content-Type: ${ct}${crlf}" +
+            "${crlf}"
+
+        $headerBytes = $encoding.GetBytes($partHeader)
+        $ms.Write($headerBytes, 0, $headerBytes.Length)
+
+        $fileBytes = [System.IO.File]::ReadAllBytes($file.FullName)
+        $ms.Write($fileBytes, 0, $fileBytes.Length)
+
+        $crlfBytes = $encoding.GetBytes($crlf)
+        $ms.Write($crlfBytes, 0, $crlfBytes.Length)
+
+        Write-Host "  Added: $filename ($ct, $([math]::Round($file.Length / 1KB, 1)) KB)"
     }
 
-    Write-Host ""
-    Write-Host "Response: $statusCode OK" -ForegroundColor Green
-    Write-Host $responseSnippet
-}
-catch {
-    $statusCode = "ERROR"
-    if ($_.Exception.Response) {
-        $statusCode = [int]$_.Exception.Response.StatusCode
+    $closingBytes = $encoding.GetBytes("--${boundary}--${crlf}")
+    $ms.Write($closingBytes, 0, $closingBytes.Length)
+
+    $bodyBytes = $ms.ToArray()
+    $ms.Dispose()
+
+    Write-Host "  Body size: $([math]::Round($bodyBytes.Length / 1MB, 2)) MB"
+    Write-Host "  Sending POST..."
+
+    try {
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri `
+            -Method "POST" `
+            -WebSession $session `
+            -Headers $headers `
+            -ContentType "multipart/form-data; boundary=${boundary}" `
+            -Body $bodyBytes
+
+        $statusCode = $response.StatusCode
+        $responseSnippet = $response.Content
+        if ($responseSnippet.Length -gt 500) {
+            $responseSnippet = $responseSnippet.Substring(0, 500) + "..."
+        }
+
+        Write-Host "  Response: $statusCode OK" -ForegroundColor Green
+        Write-Host "  $responseSnippet"
+        Write-Host ""
     }
-    Write-Host ""
-    Write-Host "Response: $statusCode FAILED" -ForegroundColor Red
-    Write-Host $_.Exception.Message
-    exit 1
+    catch {
+        $statusCode = "ERROR"
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+        Write-Host "  Response: $statusCode FAILED" -ForegroundColor Red
+        Write-Host "  $($_.Exception.Message)"
+        Write-Host ""
+        Write-Host "Aborted after $uploadedCount / $($allFiles.Count) files ($batchNum / $totalBatches batches)."
+        exit 1
+    }
+
+    $uploadedCount += $batchFiles.Count
 }
 
-Write-Host ""
-Write-Host "Done. $($files.Count) files uploaded."
+Write-Host "Done. $uploadedCount files uploaded in $totalBatches batch(es)."
