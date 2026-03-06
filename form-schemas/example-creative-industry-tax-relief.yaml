@@ -1,0 +1,13 @@
+form_id: "creative-industry-tax-relief"
+known_paths:
+  attachment:
+    - "$.gform.uploads[*].filename"
+    - "$.gform.section3.supportingDocs[*].name"
+  submission_reference:
+    - "$.metaData.submission-reference"
+  email:
+    - "$.data.contact.emailAddress"
+  utr:
+    - "$.data.business.corporationTaxUtr"
+last_updated: "2026-03-05"
+auto_discovered_paths: []

@@ -11,7 +11,7 @@
 # matching, not JSON-path matching).
 #
 # Pattern detection:
-#   - All digits (10+ chars)           -> random digits, same length
+#   - All digits (4+ chars)            -> random digits, same length
 #   - XXXX-XXXX-XXXX (alphanumeric)    -> random alphanumeric groups (submission ref)
 #   - UUID (8-4-4-4-12 hex)            -> random UUID
 #   - Anything else                    -> random business name from built-in list
