@@ -8,8 +8,10 @@ Utilities for generating varied JSON test submissions with matching renamed atta
 |--------|----------|-------------|
 | `run-all.sh` | Bash (Linux/macOS) | All-in-one: generates varied JSONs and copies renamed attachments |
 | `run-all.ps1` | PowerShell (Windows/macOS/Linux) | All-in-one: same as above, PowerShell version |
+| `post-gforms.sh` | Bash (Linux/macOS) | POST generated gForm JSONs one-by-one to an endpoint |
 | `post-gforms.ps1` | PowerShell | POST generated gForm JSONs one-by-one to an endpoint |
-| `post-attachments.ps1` | PowerShell | POST all generated attachments in a single multipart request |
+| `post-attachments.sh` | Bash (Linux/macOS) | POST all generated attachments in batched multipart requests |
+| `post-attachments.ps1` | PowerShell | POST all generated attachments in batched multipart requests |
 | `json-vary.sh` | Bash (Linux/macOS) | Standalone JSON variation only (no attachment handling) |
 | `json-vary.ps1` | PowerShell | Standalone JSON variation only (PowerShell port of json-vary.sh) |
 
@@ -45,6 +47,7 @@ This will:
 | `-o`, `--output` | `-Output` (`-o`) | `./output` | Parent output directory |
 | `--manifests` | `-Manifests` | `1` | Number of manifest files to create |
 | `-H`, `--start-hour` | `-StartHour` (`-H`) | current hour | Starting hour (0-23) for manifest timestamps |
+| `-4`, `--v4` | `-V4` | off | v4 packaging: one `CAVR_<ref>_<ddMMyyyyHHmmss>.zip` per submitter, no manifest CSV (see [v4 Packaging Mode](#v4-packaging-mode)) |
 
 ### Examples
 
@@ -60,6 +63,9 @@ This will:
 
 # 3 manifest files starting at hour 15 (manifest*15.csv, *16.csv, *17.csv)
 ./run-all.sh --manifests 3 -H 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+# v4 packaging: one CAVR_<ref>_<ts>.zip per submitter, no manifest CSV
+./run-all.sh --v4 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 ```
 
 ```powershell
@@ -74,6 +80,9 @@ This will:
 
 # 3 manifest files starting at hour 15
 .\run-all.ps1 -Manifests 3 -StartHour 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+# v4 packaging: one CAVR_<ref>_<ts>.zip per submitter, no manifest CSV
+.\run-all.ps1 -V4 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 ```
 
 ### Output Structure
@@ -97,6 +106,29 @@ output/
 ```
 
 The script is **idempotent** -- it cleans the output directory before each run. Source templates and attachments are never modified.
+
+### v4 Packaging Mode
+
+When `--v4` (Bash) or `-V4` (PowerShell) is set, Phase 2 produces one zip per submitter reference instead of loose files:
+
+```
+output/
+  gForm-template-1/                              # Varied JSONs (unchanged)
+    DYKN-ISSR-MMPZ.json
+    ...
+  attachments/
+    CAVR_DYKNISSRMMPZ_23052026142309.zip         # One zip per submitter
+    CAVR_UTXNJB5WWOP9_23052026142309.zip
+    ...
+```
+
+- **Zip name**: `CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmmss>.zip`
+- **Timestamp**: captured once at script start, shared across all zips in the run
+- **Zip contents**: the submitter's renamed attachment files, no internal directories
+- **No manifest CSV** is produced in v4 mode (`--manifests` / `-Manifests` and `-H` / `-StartHour` are ignored)
+- **Bash requirement**: the `zip` command must be on `PATH`
+
+Pair with `post-attachments.sh --v4` / `post-attachments.ps1 -V4` to upload (same endpoint as classic mode).
 
 ### Directory Layout
 
@@ -157,9 +189,9 @@ Iterates all `*.json` files under the given directory (recursively) and POSTs ea
 
 Each file is sent as `multipart/form-data` with field name `file`. The script reports per-file success/failure with HTTP status codes and prints a summary at the end.
 
-### post-attachments.ps1 -- POST attachments
+### post-attachments.{ps1,sh} -- POST attachments
 
-Collects all non-CSV files from the attachments directory and sends them in a single multipart/form-data POST request.
+Collects files from the attachments directory and sends them in batched multipart/form-data POST requests. Manifest CSVs are always sent in the final batch so they arrive after the files they reference.
 
 ```powershell
 .\post-attachments.ps1 -Uri 'https://localhost:8080/api/cavr/attachments/s3files' `
@@ -167,14 +199,23 @@ Collects all non-CSV files from the attachments directory and sends them in a si
     -AttachmentsDir './output/attachments'
 ```
 
-| Parameter | Description |
-|-----------|-------------|
-| `-Uri` | Endpoint URL to POST attachments to |
-| `-AuthToken` | Full Basic auth string (e.g., `Basic XXXXX`) |
-| `-AttachmentsDir` | Directory containing attachment files to upload |
-| `-SkipCertCheck` | Skip SSL certificate validation (for localhost / self-signed certs) |
+```bash
+./post-attachments.sh \
+    -u 'https://localhost:8080/api/cavr/attachments/s3files' \
+    -t 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' \
+    -d './output/attachments'
+```
 
-All files are sent in one request, each as a separate part with field name `files`. Content-types are detected from file extensions (PDF, JPEG, XLSX, DOCX, PPTX, ODS, ODT, ODP, etc.). The script reads all files into memory, so be mindful of total attachment size vs. server upload limits.
+| Bash flag | PowerShell flag | Default | Description |
+|-----------|-----------------|---------|-------------|
+| `-u`, `--uri` | `-Uri` | *required* | Endpoint URL to POST attachments to |
+| `-t`, `--auth-token` | `-AuthToken` | *required* | Full Basic auth string (e.g., `Basic XXXXX`) |
+| `-d`, `--attachments-dir` | `-AttachmentsDir` | *required* | Directory containing attachment files to upload |
+| `-b`, `--batch-size` | `-BatchSize` | `40` (classic) / `1` (v4) | Max files per POST request |
+| `-k`, `--skip-cert-check` | `-SkipCertCheck` | off | Skip SSL certificate validation (for localhost / self-signed certs) |
+| `-4`, `--v4` | `-V4` | off | Upload the v4 payload shape (zips produced by `run-all -V4`); defaults batch size to 1 |
+
+Each file is sent as a separate part with field name `files`. Content-types are detected from file extensions (PDF, JPEG, XLSX, DOCX, PPTX, ODS, ODT, ODP, ZIP, etc.). The script reads each batch into memory, so tune `-BatchSize` against your server upload limits.
 
 ### Typical Workflow
 
@@ -189,6 +230,33 @@ All files are sent in one request, each as a separate part with field name `file
 # 3. POST attachments to the attachments endpoint
 .\post-attachments.ps1 -Uri 'https://myserver/api/cavr/attachments/s3files' `
     -AuthToken 'Basic dXNlcjpwYXNz' -AttachmentsDir './output/attachments'
+```
+
+### v4 Workflow
+
+```powershell
+# 1. Generate one CAVR_<ref>_<ts>.zip per submitter (no manifest CSV)
+.\run-all.ps1 -V4 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+# 2. POST gForm JSONs (unchanged from classic workflow)
+.\post-gforms.ps1 -Uri 'https://myserver/api/source-files/upload-in-file' `
+    -AuthToken 'Basic dXNlcjpwYXNz' -JsonDir './output'
+
+# 3. POST the zips (same endpoint as classic, one zip per request by default)
+.\post-attachments.ps1 -V4 -Uri 'https://myserver/api/cavr/attachments/s3files' `
+    -AuthToken 'Basic dXNlcjpwYXNz' -AttachmentsDir './output/attachments'
+```
+
+```bash
+# Bash equivalent
+./run-all.sh --v4 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+./post-gforms.sh -u 'https://myserver/api/source-files/upload-in-file' \
+    -t 'Basic dXNlcjpwYXNz' -d ./output
+
+./post-attachments.sh --v4 \
+    -u 'https://myserver/api/cavr/attachments/s3files' \
+    -t 'Basic dXNlcjpwYXNz' -d ./output/attachments
 ```
 
 ## Standalone json-vary Scripts
