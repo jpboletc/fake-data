@@ -14,8 +14,10 @@
 #   -u, --uri <url>          Endpoint URL to POST to (required)
 #   -t, --auth-token <str>   Full Basic auth string (required)
 #   -d, --attachments-dir <dir>  Directory containing attachment files (required)
-#   -b, --batch-size N       Max files per POST request (default: 40)
+#   -b, --batch-size N       Max files per POST request (default: 40, or 1 with --v4)
 #   -k, --skip-cert-check    Skip SSL certificate validation
+#   -4, --v4                 v4 payload: upload CAVR_<ref>_<ts>.zip files (one per
+#                            submitter, produced by run-all.sh --v4). Same endpoint.
 #   -h, --help               Show this help
 #
 # Example:
@@ -33,8 +35,9 @@ set -euo pipefail
 URI=""
 AUTH_TOKEN=""
 ATTACHMENTS_DIR=""
-BATCH_SIZE=40
+BATCH_SIZE=-1  # resolved after parsing: 1 in v4 mode, 40 otherwise
 SKIP_CERT_CHECK=false
+V4=false
 
 # ============================================================
 # Content-type mapping
@@ -57,6 +60,7 @@ get_content_type() {
     ods)  echo "application/vnd.oasis.opendocument.spreadsheet" ;;
     odt)  echo "application/vnd.oasis.opendocument.text" ;;
     odp)  echo "application/vnd.oasis.opendocument.presentation" ;;
+    zip)  echo "application/zip" ;;
     *)    echo "application/octet-stream" ;;
   esac
 }
@@ -75,8 +79,10 @@ Options:
   -u, --uri <url>              Endpoint URL to POST to (required)
   -t, --auth-token <str>       Full Basic auth string (required)
   -d, --attachments-dir <dir>  Directory containing attachment files (required)
-  -b, --batch-size N           Max files per POST request (default: 40)
+  -b, --batch-size N           Max files per POST request (default: 40, or 1 with --v4)
   -k, --skip-cert-check        Skip SSL certificate validation
+  -4, --v4                     v4 payload: upload CAVR_<ref>_<ts>.zip files (one per
+                               submitter, produced by run-all.sh --v4). Same endpoint.
   -h, --help                   Show this help
 
 Manifest CSV files (manifest*.csv) are always sent in the final batch.
@@ -119,6 +125,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_CERT_CHECK=true
       shift
       ;;
+    -4|--v4)
+      V4=true
+      shift
+      ;;
     *)
       echo "Unknown option: $1" >&2
       show_help
@@ -126,6 +136,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Resolve batch size default: 1 in v4 mode (one zip per request), 40 otherwise
+if [ "$BATCH_SIZE" = -1 ]; then
+  if [ "$V4" = true ]; then BATCH_SIZE=1; else BATCH_SIZE=40; fi
+fi
 
 # ============================================================
 # Validation
@@ -190,13 +205,32 @@ fi
 
 # Calculate total size
 total_size=0
-for f in "${ATTACHMENT_FILES[@]}" "${MANIFEST_FILES[@]}"; do
+for f in ${ATTACHMENT_FILES[@]+"${ATTACHMENT_FILES[@]}"} ${MANIFEST_FILES[@]+"${MANIFEST_FILES[@]}"}; do
   fsize=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
   total_size=$((total_size + fsize))
 done
 total_size_mb=$(awk "BEGIN {printf \"%.2f\", $total_size / 1048576}")
 
+# v4 sanity checks
+if [ "$V4" = true ]; then
+  non_zip=0
+  for f in ${ATTACHMENT_FILES[@]+"${ATTACHMENT_FILES[@]}"}; do
+    case "${f##*.}" in zip|ZIP) ;; *) non_zip=$((non_zip + 1)) ;; esac
+  done
+  if [ "$non_zip" -gt 0 ]; then
+    echo "Warning: v4 mode but $non_zip non-zip attachment file(s) present. Run run-all.sh --v4 to produce zips." >&2
+  fi
+  if [ ${#MANIFEST_FILES[@]} -gt 0 ]; then
+    echo "Warning: v4 mode but ${#MANIFEST_FILES[@]} manifest CSV(s) present. v4 payload doesn't expect a manifest -- they will still be uploaded in the final batch." >&2
+  fi
+fi
+
 echo "Endpoint:    $URI"
+if [ "$V4" = true ]; then
+  echo "Mode:        v4 (zip-per-submitter)"
+else
+  echo "Mode:        classic (loose files)"
+fi
 echo "Attachments: $ATTACHMENTS_DIR"
 echo "Files:       $total_files ($total_size_mb MB)"
 echo "  Attachments: ${#ATTACHMENT_FILES[@]}"
@@ -253,7 +287,7 @@ for ((b=0; b<total_batches; b++)); do
 
   # Append manifests to the last batch
   if [ "$batch_num" -eq "$total_batches" ]; then
-    for mf in "${MANIFEST_FILES[@]}"; do
+    for mf in ${MANIFEST_FILES[@]+"${MANIFEST_FILES[@]}"}; do
       batch_files+=("$mf")
     done
   fi

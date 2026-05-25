@@ -23,6 +23,12 @@
 .PARAMETER SkipCertCheck
     Skip SSL certificate validation (for localhost / self-signed certs).
 
+.PARAMETER V4
+    Upload the v4 payload shape: one CAVR_<ref>_<ts>.zip per submitter reference,
+    produced by run-all.ps1 -V4. Defaults BatchSize to 1 (one zip per request);
+    override with -BatchSize if the endpoint accepts multiple per call. Same
+    endpoint as the non-v4 mode.
+
 .EXAMPLE
     .\post-attachments.ps1 -Uri 'https://localhost:8080/api/cavr/attachments/s3files' `
         -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
@@ -33,6 +39,12 @@
         -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
         -AttachmentsDir './output/attachments' `
         -BatchSize 20
+
+.EXAMPLE
+    .\post-attachments.ps1 -Uri 'https://localhost:8080/api/cavr/attachments/s3files' `
+        -AuthToken 'Basic On53YF0/fGA4SS9JQCUlIX51MEUq' `
+        -AttachmentsDir './output/attachments' `
+        -V4
 #>
 
 [CmdletBinding()]
@@ -46,10 +58,17 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$AttachmentsDir,
 
-    [int]$BatchSize = 40,
+    [int]$BatchSize = -1,
 
-    [switch]$SkipCertCheck
+    [switch]$SkipCertCheck,
+
+    [switch]$V4
 )
+
+# BatchSize defaults: v4 = 1 zip per request, classic = 40 files per request
+if ($BatchSize -eq -1) {
+    $BatchSize = if ($V4) { 1 } else { 40 }
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -82,6 +101,7 @@ $contentTypes = @{
     ".ods"  = "application/vnd.oasis.opendocument.spreadsheet"
     ".odt"  = "application/vnd.oasis.opendocument.text"
     ".odp"  = "application/vnd.oasis.opendocument.presentation"
+    ".zip"  = "application/zip"
 }
 
 # Parse URI for headers
@@ -115,7 +135,19 @@ if ($allFiles.Count -eq 0) {
 $totalSize = ($allFiles | Measure-Object -Property Length -Sum).Sum
 $totalSizeMB = [math]::Round($totalSize / 1MB, 2)
 
+# v4 sanity check: expect only CAVR_*.zip files (no manifest in v4)
+if ($V4) {
+    $nonZip = @($attachmentFiles | Where-Object { $_.Extension -ne ".zip" })
+    if ($nonZip.Count -gt 0) {
+        Write-Warning "v4 mode but $($nonZip.Count) non-zip attachment file(s) present (e.g. $($nonZip[0].Name)). Run run-all.ps1 -V4 to produce zips."
+    }
+    if ($manifestFiles.Count -gt 0) {
+        Write-Warning "v4 mode but $($manifestFiles.Count) manifest CSV(s) present. v4 payload doesn't expect a manifest -- they will still be uploaded in the final batch."
+    }
+}
+
 Write-Host "Endpoint:    $Uri"
+Write-Host "Mode:        $(if ($V4) { 'v4 (zip-per-submitter)' } else { 'classic (loose files)' })"
 Write-Host "Attachments: $AttachmentsDir"
 Write-Host "Files:       $($allFiles.Count) ($totalSizeMB MB)"
 Write-Host "  Attachments: $($attachmentFiles.Count)"

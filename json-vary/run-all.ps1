@@ -43,6 +43,14 @@
     Attachments are randomly distributed across manifests.
     Hours increment from StartHour; dates advance on midnight rollover.
 
+.PARAMETER V4
+    Emit one zip per submitter reference instead of loose files. Each zip is
+    named CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmmss>.zip and contains
+    that submitter's renamed attachment files. The timestamp is captured once
+    at script start and shared across all zips in the run. No manifest CSV
+    is produced in v4 mode (the -Manifests and -StartHour params are ignored).
+    Pair with post-attachments.ps1 -V4 to upload.
+
 .EXAMPLE
     .\run-all.ps1 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 
@@ -51,6 +59,9 @@
 
 .EXAMPLE
     .\run-all.ps1 -Manifests 3 -StartHour 15 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
+
+.EXAMPLE
+    .\run-all.ps1 -V4 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 #>
 
 [CmdletBinding(PositionalBinding=$false)]
@@ -76,10 +87,19 @@ param(
     [Alias("H")]
     [int]$StartHour = -1,
 
-    [int]$Manifests = 1
+    [int]$Manifests = 1,
+
+    [switch]$V4
 )
 
 $ErrorActionPreference = "Stop"
+
+# V4 packaging timestamp (captured once, shared by all zips this run)
+$V4Timestamp = (Get-Date).ToString("ddMMyyyyHHmmss")
+
+if ($V4) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+}
 
 # ============================================================
 # Random generators
@@ -279,6 +299,9 @@ Write-Host "Output:          $Output"
 if ($Manifests -gt 1) {
     Write-Host "Manifests:       $Manifests (starting at hour $('{0:D2}' -f $StartHour))"
 }
+if ($V4) {
+    Write-Host "Packaging:       v4 (one zip per submitter, ts=$V4Timestamp)"
+}
 Write-Host ""
 Write-Host "Values to replace:"
 for ($i = 0; $i -lt $Values.Count; $i++) {
@@ -362,15 +385,18 @@ $attachmentsOutDir = (New-Item -ItemType Directory -Path (Join-Path $Output "att
 
 # Create manifest file(s) with empty first line, no header
 # Use UTF-8 without BOM (PS 5.1's -Encoding UTF8 adds a BOM which breaks Java CSV parsing)
+# Skipped in v4 mode -- the zip-per-submitter payload doesn't include a manifest.
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $baseDate = Get-Date
 $manifestPaths = @()
-for ($mi = 0; $mi -lt $Manifests; $mi++) {
-    $ts = $baseDate.Date.AddHours($StartHour + $mi)
-    $stamp = $ts.ToString("ddMMyyHH")
-    $path = Join-Path $attachmentsOutDir "manifest${stamp}.csv"
-    [System.IO.File]::WriteAllText($path, "`r`n", $utf8NoBom)
-    $manifestPaths += $path
+if (-not $V4) {
+    for ($mi = 0; $mi -lt $Manifests; $mi++) {
+        $ts = $baseDate.Date.AddHours($StartHour + $mi)
+        $stamp = $ts.ToString("ddMMyyHH")
+        $path = Join-Path $attachmentsOutDir "manifest${stamp}.csv"
+        [System.IO.File]::WriteAllText($path, "`r`n", $utf8NoBom)
+        $manifestPaths += $path
+    }
 }
 
 $totalCopied = 0
@@ -422,19 +448,38 @@ foreach ($template in $templates) {
         # Remove hyphens for use as filename prefix
         $filePrefix = $submissionRef -replace '-', ''
 
-        foreach ($attachment in $sourceAttachments) {
-            $newName = $attachment.Name -replace [regex]::Escape($originalPrefix), $filePrefix
-            $destPath = Join-Path $attachmentsOutDir $newName
-            Copy-Item -Path $attachment.FullName -Destination $destPath
+        if ($V4) {
+            # v4: write one zip per submitter ref, containing the renamed files
+            $zipName = "CAVR_${filePrefix}_${V4Timestamp}.zip"
+            $zipPath = Join-Path $attachmentsOutDir $zipName
+            $zip = [System.IO.Compression.ZipFile]::Open(
+                $zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+            try {
+                foreach ($attachment in $sourceAttachments) {
+                    $newName = $attachment.Name -replace [regex]::Escape($originalPrefix), $filePrefix
+                    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                        $zip, $attachment.FullName, $newName) | Out-Null
+                    $totalCopied++
+                }
+            } finally {
+                $zip.Dispose()
+            }
+            Write-Host "  $submissionRef -> $zipName ($($sourceAttachments.Count) entries)"
+        } else {
+            foreach ($attachment in $sourceAttachments) {
+                $newName = $attachment.Name -replace [regex]::Escape($originalPrefix), $filePrefix
+                $destPath = Join-Path $attachmentsOutDir $newName
+                Copy-Item -Path $attachment.FullName -Destination $destPath
 
-            $mailItemId = New-ManifestId
-            $attachedId = New-ManifestId
-            $chosenManifest = $manifestPaths[$Rng.Next(0, $manifestPaths.Count)]
-            [System.IO.File]::AppendAllText($chosenManifest, "${mailItemId},${attachedId},${newName}`r`n", $utf8NoBom)
+                $mailItemId = New-ManifestId
+                $attachedId = New-ManifestId
+                $chosenManifest = $manifestPaths[$Rng.Next(0, $manifestPaths.Count)]
+                [System.IO.File]::AppendAllText($chosenManifest, "${mailItemId},${attachedId},${newName}`r`n", $utf8NoBom)
 
-            $totalCopied++
+                $totalCopied++
+            }
+            Write-Host "  $submissionRef -> $($sourceAttachments.Count) files"
         }
-        Write-Host "  $submissionRef -> $($sourceAttachments.Count) files"
     }
 
     Write-Host ""
@@ -445,7 +490,9 @@ foreach ($template in $templates) {
 # ============================================================
 
 Write-Host "Attachments: $attachmentsOutDir/"
-if ($manifestPaths.Count -eq 1) {
+if ($manifestPaths.Count -eq 0) {
+    Write-Host "Manifest:    (none -- v4 mode)"
+} elseif ($manifestPaths.Count -eq 1) {
     Write-Host "Manifest:    $($manifestPaths[0])"
 } else {
     Write-Host "Manifests:   $($manifestPaths.Count) files"
@@ -453,6 +500,11 @@ if ($manifestPaths.Count -eq 1) {
         Write-Host "             $(Split-Path $mp -Leaf)"
     }
 }
-Write-Host "Total files: $totalCopied attachments"
+if ($V4) {
+    $zipCount = (Get-ChildItem -Path $attachmentsOutDir -Filter "CAVR_*.zip" -File -ErrorAction SilentlyContinue).Count
+    Write-Host "Total files: $totalCopied attachments packed into $zipCount zip(s)"
+} else {
+    Write-Host "Total files: $totalCopied attachments"
+}
 Write-Host ""
 Write-Host "All done. $($templates.Count) templates x $Variations variations = $($templates.Count * $Variations) submissions."

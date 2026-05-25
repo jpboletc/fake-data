@@ -26,11 +26,14 @@
 #   -o, --output <dir>        Output directory (default: ./output)
 #   --manifests N             Number of manifest files (default: 1)
 #   -H, --start-hour HH      Starting hour 0-23 for manifests (default: current hour)
+#   -4, --v4                  v4 packaging: one CAVR_<ref>_<ts>.zip per submitter
+#                             (no manifest CSV). Pair with post-attachments.sh --v4.
 #   -h, --help                Show this help
 #
 # Examples:
 #   ./run-all.sh '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 #   ./run-all.sh -n 10 -m 3 -o ./results '9237766545' 'T9Q0-IIIB-PP52'
+#   ./run-all.sh --v4 '9237766545' 'T9Q0-IIIB-PP52' 'a8d91e74-2285-4582-9d7c-fe6b400da347' 'SUA tec04'
 
 set -euo pipefail
 
@@ -45,6 +48,7 @@ MAX_ATTACHMENTS=0
 OUTPUT="./output"
 MANIFESTS=1
 START_HOUR=-1
+V4=false
 
 # ============================================================
 # Business name list
@@ -228,6 +232,8 @@ Options:
   -o, --output <dir>        Output directory (default: ./output)
   --manifests N             Number of manifest files (default: 1)
   -H, --start-hour HH      Starting hour 0-23 for manifests (default: current hour)
+  -4, --v4                  v4 packaging: one CAVR_<ref>_<ts>.zip per submitter
+                            (no manifest CSV). Pair with post-attachments.sh --v4.
   -h, --help                Show this help
 
 Pattern detection (automatic from value format):
@@ -281,6 +287,10 @@ while [[ $# -gt 0 ]]; do
     -H|--start-hour)
       START_HOUR="$2"
       shift 2
+      ;;
+    -4|--v4)
+      V4=true
+      shift
       ;;
     -*)
       echo "Unknown option: $1" >&2
@@ -348,6 +358,16 @@ elif [ "$START_HOUR" -lt 0 ] || [ "$START_HOUR" -gt 23 ]; then
   exit 1
 fi
 
+# v4 packaging: capture single timestamp shared by all zips this run; require `zip`
+V4_TIMESTAMP=""
+if [ "$V4" = true ]; then
+  if ! command -v zip >/dev/null 2>&1; then
+    echo "Error: --v4 requires the 'zip' command, not found in PATH" >&2
+    exit 1
+  fi
+  V4_TIMESTAMP=$(date +"%d%m%Y%H%M%S")
+fi
+
 # ============================================================
 # Prepare: detect submission ref index, sort by length
 # ============================================================
@@ -393,6 +413,9 @@ fi
 echo "Output:          $OUTPUT"
 if [ "$MANIFESTS" -gt 1 ]; then
   echo "Manifests:       $MANIFESTS (starting at hour $(printf '%02d' $START_HOUR))"
+fi
+if [ "$V4" = true ]; then
+  echo "Packaging:       v4 (one zip per submitter, ts=$V4_TIMESTAMP)"
 fi
 echo ""
 echo "Values to replace:"
@@ -481,6 +504,8 @@ echo ""
 
 attachments_out_dir="$OUTPUT/attachments"
 mkdir -p "$attachments_out_dir"
+# Absolute path needed for v4 zipping (we cd into a temp dir to run `zip`)
+attachments_out_abs=$(cd "$attachments_out_dir" && pwd)
 
 # Create manifest file(s) with empty first line, no header
 # Use epoch-seconds arithmetic for portable midnight rollover
@@ -495,13 +520,16 @@ else
 fi
 
 MANIFEST_PATHS=()
-for ((mi=0; mi<MANIFESTS; mi++)); do
-  epoch=$((base_epoch + mi * 3600))
-  stamp=$(date_from_epoch "$epoch" "%d%m%y%H")
-  path="$attachments_out_dir/manifest${stamp}.csv"
-  echo "" > "$path"
-  MANIFEST_PATHS+=("$path")
-done
+# Skipped in v4 mode -- the zip-per-submitter payload doesn't include a manifest.
+if [ "$V4" != true ]; then
+  for ((mi=0; mi<MANIFESTS; mi++)); do
+    epoch=$((base_epoch + mi * 3600))
+    stamp=$(date_from_epoch "$epoch" "%d%m%y%H")
+    path="$attachments_out_dir/manifest${stamp}.csv"
+    echo "" > "$path"
+    MANIFEST_PATHS+=("$path")
+  done
+fi
 
 total_copied=0
 for template in "${TEMPLATES[@]}"; do
@@ -558,19 +586,35 @@ for template in "${TEMPLATES[@]}"; do
     # Remove hyphens for filename prefix
     file_prefix="${submission_ref//-/}"
 
-    for attachment in "${SOURCE_ATTACHMENTS[@]}"; do
-      attach_name=$(basename "$attachment")
-      new_name="${attach_name/$original_prefix/$file_prefix}"
-      cp "$attachment" "$attachments_out_dir/$new_name"
+    if [ "$V4" = true ]; then
+      # v4: stage renamed files in a temp dir, then zip them as one CAVR_<ref>_<ts>.zip
+      zip_name="CAVR_${file_prefix}_${V4_TIMESTAMP}.zip"
+      zip_path="$attachments_out_abs/$zip_name"
+      tmp_dir=$(mktemp -d)
+      for attachment in "${SOURCE_ATTACHMENTS[@]}"; do
+        attach_name=$(basename "$attachment")
+        new_name="${attach_name/$original_prefix/$file_prefix}"
+        cp "$attachment" "$tmp_dir/$new_name"
+        total_copied=$((total_copied + 1))
+      done
+      ( cd "$tmp_dir" && zip -q -X "$zip_path" ./* )
+      rm -rf "$tmp_dir"
+      echo "  $submission_ref -> $zip_name (${#SOURCE_ATTACHMENTS[@]} entries)"
+    else
+      for attachment in "${SOURCE_ATTACHMENTS[@]}"; do
+        attach_name=$(basename "$attachment")
+        new_name="${attach_name/$original_prefix/$file_prefix}"
+        cp "$attachment" "$attachments_out_dir/$new_name"
 
-      mail_item_id=$(gen_manifest_id)
-      attached_id=$(gen_manifest_id)
-      manifest_idx=$(( $(od -An -tu2 -N2 /dev/urandom | tr -d ' ') % MANIFESTS ))
-      echo "${mail_item_id},${attached_id},${new_name}" >> "${MANIFEST_PATHS[$manifest_idx]}"
+        mail_item_id=$(gen_manifest_id)
+        attached_id=$(gen_manifest_id)
+        manifest_idx=$(( $(od -An -tu2 -N2 /dev/urandom | tr -d ' ') % MANIFESTS ))
+        echo "${mail_item_id},${attached_id},${new_name}" >> "${MANIFEST_PATHS[$manifest_idx]}"
 
-      total_copied=$((total_copied + 1))
-    done
-    echo "  $submission_ref -> ${#SOURCE_ATTACHMENTS[@]} files"
+        total_copied=$((total_copied + 1))
+      done
+      echo "  $submission_ref -> ${#SOURCE_ATTACHMENTS[@]} files"
+    fi
   done
 
   echo ""
@@ -581,7 +625,9 @@ done
 # ============================================================
 
 echo "Attachments: $attachments_out_dir/"
-if [ ${#MANIFEST_PATHS[@]} -eq 1 ]; then
+if [ ${#MANIFEST_PATHS[@]} -eq 0 ]; then
+  echo "Manifest:    (none -- v4 mode)"
+elif [ ${#MANIFEST_PATHS[@]} -eq 1 ]; then
   echo "Manifest:    ${MANIFEST_PATHS[0]}"
 else
   echo "Manifests:   ${#MANIFEST_PATHS[@]} files"
@@ -589,6 +635,11 @@ else
     echo "             $(basename "$mp")"
   done
 fi
-echo "Total files: $total_copied attachments"
+if [ "$V4" = true ]; then
+  zip_count=$(find "$attachments_out_dir" -maxdepth 1 -name 'CAVR_*.zip' -type f | wc -l | tr -d ' ')
+  echo "Total files: $total_copied attachments packed into $zip_count zip(s)"
+else
+  echo "Total files: $total_copied attachments"
+fi
 echo ""
 echo "All done. ${#TEMPLATES[@]} templates x $VARIATIONS variations = $(( ${#TEMPLATES[@]} * VARIATIONS )) submissions."
