@@ -593,11 +593,11 @@ for template in "${TEMPLATES[@]}"; do
       tmp_dir=$(mktemp -d)
       for attachment in "${SOURCE_ATTACHMENTS[@]}"; do
         attach_name=$(basename "$attachment")
-        # v4: strip the source prefix entirely. Submitter ref is already in
-        # the zip filename, so the entries inside are unprefixed
-        # (e.g. ALLFORMAT123_1_API_Documentation.pdf -> 1_API_Documentation.pdf).
-        new_name="${attach_name#${original_prefix}_}"
-        cp "$attachment" "$tmp_dir/$new_name"
+        # v4: zip entries keep the source filename verbatim. The submitter
+        # ref is already encoded in the zip filename, so no rename happens
+        # inside. This avoids data-shape coupling to whatever prefix
+        # convention the source attachments use.
+        cp "$attachment" "$tmp_dir/$attach_name"
         total_copied=$((total_copied + 1))
       done
       ( cd "$tmp_dir" && zip -q -X "$zip_path" ./* )

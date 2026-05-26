@@ -460,12 +460,12 @@ foreach ($template in $templates) {
                 $zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
             try {
                 foreach ($attachment in $sourceAttachments) {
-                    # v4: strip the source prefix entirely. Submitter ref is already
-                    # in the zip filename, so the entries inside are unprefixed
-                    # (e.g. ALLFORMAT123_1_API_Documentation.pdf -> 1_API_Documentation.pdf).
-                    $newName = $attachment.Name -replace "^$([regex]::Escape($originalPrefix))_", ""
+                    # v4: zip entries keep the source filename verbatim. The
+                    # submitter ref is already encoded in the zip filename, so
+                    # no rename happens inside. This avoids data-shape coupling
+                    # to whatever prefix convention the source attachments use.
                     [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
-                        $zip, $attachment.FullName, $newName) | Out-Null
+                        $zip, $attachment.FullName, $attachment.Name) | Out-Null
                     $totalCopied++
                 }
             } finally {
