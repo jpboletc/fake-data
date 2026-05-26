@@ -130,6 +130,8 @@ output/
 
 Pair with `post-attachments.sh --v4` / `post-attachments.ps1 -V4` to upload (same endpoint as classic mode).
 
+> **Classic-mode caveat with index-prefix source files.** Classic (non-v4) mode detects a single source prefix from the *first* file in each `attachments/<template>/` directory and replaces it with the submitter reference in every other file's name. This works when source files share a unique placeholder prefix (e.g. `ALLFORMAT123_*.pdf`). It does **not** work when source files have numeric/index prefixes like `1_*.pdf`, `2_*.xlsx`, `3_*.docx` -- only the file matching the detected prefix gets renamed, and in PowerShell any stray occurrence of that digit elsewhere in a filename can be clobbered too. **If your source data uses index prefixes, use v4 mode.**
+
 ### Directory Layout
 
 ```
