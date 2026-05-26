@@ -47,7 +47,7 @@ This will:
 | `-o`, `--output` | `-Output` (`-o`) | `./output` | Parent output directory |
 | `--manifests` | `-Manifests` | `1` | Number of manifest files to create |
 | `-H`, `--start-hour` | `-StartHour` (`-H`) | current hour | Starting hour (0-23) for manifest timestamps |
-| `-4`, `--v4` | `-V4` | off | v4 packaging: one `CAVR_<ref>_<ddMMyyyyHHmmss>.zip` per submitter, no manifest CSV (see [v4 Packaging Mode](#v4-packaging-mode)) |
+| `-4`, `--v4` | `-V4` | off | v4 packaging: one `CAVR_<ref>_<ddMMyyyyHHmm>.zip` per submitter, no manifest CSV (see [v4 Packaging Mode](#v4-packaging-mode)) |
 
 ### Examples
 
@@ -117,12 +117,12 @@ output/
     DYKN-ISSR-MMPZ.json
     ...
   attachments/
-    CAVR_DYKNISSRMMPZ_23052026142309.zip         # One zip per submitter
-    CAVR_UTXNJB5WWOP9_23052026142309.zip
+    CAVR_DYKNISSRMMPZ_230520261423.zip           # One zip per submitter
+    CAVR_UTXNJB5WWOP9_230520261423.zip
     ...
 ```
 
-- **Zip name**: `CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmmss>.zip`
+- **Zip name**: `CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmm>.zip`
 - **Timestamp**: captured once at script start, shared across all zips in the run
 - **Zip contents**: the submitter's renamed attachment files, no internal directories
 - **No manifest CSV** is produced in v4 mode (`--manifests` / `-Manifests` and `-H` / `-StartHour` are ignored)

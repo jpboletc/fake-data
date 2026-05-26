@@ -45,7 +45,7 @@
 
 .PARAMETER V4
     Emit one zip per submitter reference instead of loose files. Each zip is
-    named CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmmss>.zip and contains
+    named CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmm>.zip and contains
     that submitter's renamed attachment files. The timestamp is captured once
     at script start and shared across all zips in the run. No manifest CSV
     is produced in v4 mode (the -Manifests and -StartHour params are ignored).
@@ -95,7 +95,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # V4 packaging timestamp (captured once, shared by all zips this run)
-$V4Timestamp = (Get-Date).ToString("ddMMyyyyHHmmss")
+$V4Timestamp = (Get-Date).ToString("ddMMyyyyHHmm")
 
 if ($V4) {
     # Windows PowerShell 5.1 doesn't auto-load these. ZipArchiveMode lives in

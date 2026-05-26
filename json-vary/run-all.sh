@@ -365,7 +365,7 @@ if [ "$V4" = true ]; then
     echo "Error: --v4 requires the 'zip' command, not found in PATH" >&2
     exit 1
   fi
-  V4_TIMESTAMP=$(date +"%d%m%Y%H%M%S")
+  V4_TIMESTAMP=$(date +"%d%m%Y%H%M")
 fi
 
 # ============================================================
