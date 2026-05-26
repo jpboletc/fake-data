@@ -98,7 +98,11 @@ $ErrorActionPreference = "Stop"
 $V4Timestamp = (Get-Date).ToString("ddMMyyyyHHmmss")
 
 if ($V4) {
-    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+    # Windows PowerShell 5.1 doesn't auto-load these. ZipArchiveMode lives in
+    # System.IO.Compression; ZipFile / ZipFileExtensions live in the FileSystem
+    # assembly. Load both -- silently ignore if already present (PS 7+).
+    Add-Type -AssemblyName System.IO.Compression -ErrorAction SilentlyContinue
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
 }
 
 # ============================================================
