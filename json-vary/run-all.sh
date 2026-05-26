@@ -593,7 +593,10 @@ for template in "${TEMPLATES[@]}"; do
       tmp_dir=$(mktemp -d)
       for attachment in "${SOURCE_ATTACHMENTS[@]}"; do
         attach_name=$(basename "$attachment")
-        new_name="${attach_name/$original_prefix/$file_prefix}"
+        # v4: strip the source prefix entirely. Submitter ref is already in
+        # the zip filename, so the entries inside are unprefixed
+        # (e.g. ALLFORMAT123_1_API_Documentation.pdf -> 1_API_Documentation.pdf).
+        new_name="${attach_name#${original_prefix}_}"
         cp "$attachment" "$tmp_dir/$new_name"
         total_copied=$((total_copied + 1))
       done

@@ -460,7 +460,10 @@ foreach ($template in $templates) {
                 $zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
             try {
                 foreach ($attachment in $sourceAttachments) {
-                    $newName = $attachment.Name -replace [regex]::Escape($originalPrefix), $filePrefix
+                    # v4: strip the source prefix entirely. Submitter ref is already
+                    # in the zip filename, so the entries inside are unprefixed
+                    # (e.g. ALLFORMAT123_1_API_Documentation.pdf -> 1_API_Documentation.pdf).
+                    $newName = $attachment.Name -replace "^$([regex]::Escape($originalPrefix))_", ""
                     [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
                         $zip, $attachment.FullName, $newName) | Out-Null
                     $totalCopied++

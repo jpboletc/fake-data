@@ -124,7 +124,7 @@ output/
 
 - **Zip name**: `CAVR_<submitterRefWithoutHyphens>_<ddMMyyyyHHmm>.zip`
 - **Timestamp**: captured once at script start, shared across all zips in the run
-- **Zip contents**: the submitter's renamed attachment files, no internal directories
+- **Zip contents**: the submitter's attachment files with the source prefix stripped (e.g. `1_API_Documentation.pdf`, `2_Sprint_Burndown.jpeg`) -- the submitter reference is already encoded in the zip filename, so the entries inside are unprefixed. No internal directories.
 - **No manifest CSV** is produced in v4 mode (`--manifests` / `-Manifests` and `-H` / `-StartHour` are ignored)
 - **Bash requirement**: the `zip` command must be on `PATH`
 
